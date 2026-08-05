@@ -94,18 +94,23 @@ source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 # 快捷键
 # ==============================================================================
 # Ctrl+F 接受 autosuggestions 的建议（默认是 → 键，Ctrl+F 更顺手）
-bindkey '^F' autosuggest-accept
+# bindkey '^F' autosuggest-accept
 
 # ==============================================================================
 # 别名
 # ==============================================================================
 # eza | 替代 ls，支持彩色输出、文件图标、目录优先
 # 使用方法: ls 普通列表, ll 详细列表, lt 树形视图
-alias ls="eza --icons --group-directories-first"
-alias ll="eza -l --icons --sort=name"
-alias lt="eza --tree --icons --level=2"
+alias ls="eza --icons --group-directories-first --sort=name"
+alias lsa="eza --icons --group-directories-first --sort=name --all"
+alias ll="eza -l --icons --group-directories-first --sort=name"
+alias lla="eza -l --icons --group-directories-first --sort=name --all"
+alias lt="eza --tree --icons --group-directories-first --sort=name --level=2"
+alias lta="eza --tree --icons --group-directories-first --sort=name --level=2 --all"
 
+# ==============================================================================
 # bat | 替代 cat，支持语法高亮
+# ==============================================================================
 # 使用方法: cat 文件名（实际调用 bat）
 # 注意: --paging=never 禁用分页，--style=plain 去掉行号等装饰，只保留语法高亮
 alias cat="bat --paging=never --style=plain"
