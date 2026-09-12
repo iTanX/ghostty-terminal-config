@@ -94,13 +94,13 @@ echo "  4. 将当前用户的默认 Shell 切换为 zsh"
 echo ""
 echo "已有 Starship 配置将备份到: $BACKUP_DIR"
 echo ""
-read -r -p "是否继续？(y/n) " -n 1 REPLY < /dev/tty
-echo ""
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-  echo "已取消安装。"
-  exit 0
-fi
-echo ""
+# read -r -p "是否继续？(y/n) " -n 1 REPLY < /dev/tty
+# echo ""
+# if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+#   echo "已取消安装。"
+#   exit 0
+# fi
+# echo ""
 
 # ==============================================================================
 # 安装 APT 依赖
