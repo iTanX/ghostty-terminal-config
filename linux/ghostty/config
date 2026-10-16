@@ -1,0 +1,52 @@
+# ==============================================================================
+# 字体
+# ==============================================================================
+# font-family: 终端字体，需要 Nerd Font 版本才能显示图标
+#             Maple Mono NF 由 install.sh 从官方 Release 安装到 ~/.local/share/fonts
+# font-size: 字号
+# adjust-cell-height: 行间距，0 为默认紧凑，可调大（如 10%、20%）增加行距
+# 注: mac 配置中的 font-thicken（字体加粗渲染）为 macOS 专属，Linux 上无效，故未启用
+font-family = "Maple Mono NF"
+font-size = 13
+adjust-cell-height = 0
+
+# ==============================================================================
+# 主题
+# ==============================================================================
+# ghostty +list-themes 可预览全部 300+ 内置主题
+theme = "Catppuccin Mocha"
+
+# ==============================================================================
+# 窗口
+# ==============================================================================
+# window-padding-x/y: 内容与窗口边缘的内边距，文字不贴边
+# background-opacity: 背景透明度，0.92 微透明能隐约看到桌面壁纸
+# background-blur: 毛玻璃模糊强度，配合半透明使用（值越大越模糊，true=20）
+#                  仅部分桌面环境支持（如 KDE Plasma）；Ubuntu 默认的 GNOME 不支持
+#                  客户端模糊，此时透明度仍生效，模糊无效
+# 注: mac 配置中的 macos-titlebar-style（标签页融入标题栏）为 macOS 专属，故未启用
+# 注: window-save-state（退出保留窗口状态）为 macOS 专属，Linux 上无任何效果，故未启用
+window-padding-x = 12
+window-padding-y = 8
+background-opacity = 0.92
+background-blur = 20
+
+# ==============================================================================
+# 光标
+# ==============================================================================
+# cursor-style: bar 细竖线 | block 方块 | underline 下划线
+# cursor-style-blink: 光标是否闪烁
+cursor-style = bar
+cursor-style-blink = true
+
+# ==============================================================================
+# 交互
+# ==============================================================================
+# copy-on-select: 鼠标选中文本自动复制到剪贴板
+# confirm-close-surface: 关闭窗口时不弹确认框
+# mouse-hide-while-typing: 打字时自动隐藏鼠标光标
+# shell-integration: 启用 zsh shell 集成（支持命令跳转等功能）
+copy-on-select = clipboard
+confirm-close-surface = false
+mouse-hide-while-typing = true
+shell-integration = zsh

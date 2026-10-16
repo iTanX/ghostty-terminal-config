@@ -1,23 +1,26 @@
 #!/bin/bash
 
 # ==============================================================================
-# WSL Ubuntu Shell Config 一键安装脚本
+# Ubuntu 26.04 Shell Config 一键安装脚本
 # ==============================================================================
 # 用法:
 #   bash linux/install.sh
 #
 # 说明:
-#   1. 启用 universe 并安装终端工具和 zsh 插件
+#   1. 启用 universe 并安装终端工具、Ghostty 和 zsh 插件
 #   2. 添加 Yazi 官方 APT 源并安装 Yazi
-#   3. 备份已有 Starship 配置到 ~/.config-backup/YYYYMMDD_HHMMSS/
-#   4. 安装 Starship 和 zsh 配置，并将默认 Shell 切换为 zsh
+#   3. 安装 Maple Mono NF 字体到 ~/.local/share/fonts/maple-mono-nf
+#   4. 备份已有 Ghostty 和 Starship 配置到 ~/.config-backup/YYYYMMDD_HHMMSS/
+#   5. 安装 Ghostty、Starship 和 zsh 配置，并将默认 Shell 切换为 zsh
 #
 # 恢复备份:
+#   rm -f ~/.config/ghostty/config
+#   cp -a ~/.config-backup/<时间戳>/ghostty-config ~/.config/ghostty/config
 #   rm -f ~/.config/starship.toml
 #   cp -a ~/.config-backup/<时间戳>/starship.toml ~/.config/starship.toml
 #
 # 卸载 zsh 配置:
-#   删除 ~/.zshrc 中 ">>> wsl-ubuntu-shell-config >>>" 到 "<<< wsl-ubuntu-shell-config <<<" 之间的内容
+#   删除 ~/.zshrc 中 ">>> linux-ghostty-terminal-config >>>" 到 "<<< linux-ghostty-terminal-config <<<" 之间的内容
 # ==============================================================================
 
 set -euo pipefail
@@ -25,18 +28,27 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_DIR="$HOME/.config-backup/$(date +%Y%m%d_%H%M%S)"
 TMP_DIR="$(mktemp -d)"
+GHOSTTY_SOURCE="$SCRIPT_DIR/ghostty/config"
+GHOSTTY_TARGET="$HOME/.config/ghostty/config"
 STARSHIP_SOURCE="$SCRIPT_DIR/starship/starship.toml"
 STARSHIP_TARGET="$HOME/.config/starship.toml"
 ZSH_SOURCE="$SCRIPT_DIR/zsh/.zshrc"
 ZSH_COMPLETIONS_DIR="$HOME/.local/share/zsh-completions"
-ZSH_MARKER_START="# >>> wsl-ubuntu-shell-config >>>"
-ZSH_MARKER_END="# <<< wsl-ubuntu-shell-config <<<"
+ZSH_MARKER_START="# >>> linux-ghostty-terminal-config >>>"
+ZSH_MARKER_END="# <<< linux-ghostty-terminal-config <<<"
 YAZI_KEY_URL="https://yazi-rs.github.io/builds/yazi-keyring.gpg"
 YAZI_KEYRING="/usr/share/keyrings/yazi-keyring.gpg"
 YAZI_SOURCE_LIST="/etc/apt/sources.list.d/yazi.list"
 YAZI_APT_SOURCE="deb [signed-by=$YAZI_KEYRING] https://yazi-rs.github.io/builds/ stable main"
+# Maple Mono NF 没有 Ubuntu 软件包，只能从 GitHub Release 下载
+# 版本与 macOS 端的 font-maple-mono-nf cask 保持对齐，升级时只改这里
+MAPLE_VERSION="v7.9"
+MAPLE_RELEASE_URL="https://github.com/subframe7536/maple-font/releases/download/$MAPLE_VERSION"
+MAPLE_ZIP_NAME="MapleMono-NF.zip"
+# 用户级字体目录，无需 sudo，fontconfig 会自动扫描
+FONT_DIR="$HOME/.local/share/fonts/maple-mono-nf"
 
-# 清理下载 Yazi 密钥时使用的临时目录
+# 清理下载 Yazi 密钥和字体包时使用的临时目录
 cleanup() {
   rm -rf "$TMP_DIR"
 }
@@ -46,7 +58,7 @@ trap cleanup EXIT
 # 检查环境
 # ==============================================================================
 if [ "$(id -u)" -eq 0 ]; then
-  echo "错误: 请使用普通 WSL 用户运行本脚本，不要使用 root。"
+  echo "错误: 请使用普通用户运行本脚本，不要使用 root。"
   exit 1
 fi
 
@@ -58,14 +70,9 @@ fi
 # os-release 是 Ubuntu 提供的系统版本信息
 . /etc/os-release
 if [ "${ID:-}" != "ubuntu" ] || [ "${VERSION_ID:-}" != "26.04" ]; then
-  echo "错误: 本脚本仅支持 WSL Ubuntu 26.04 LTS。"
+  echo "错误: 本脚本仅支持 Ubuntu 26.04 LTS（Ghostty 官方软件包自 26.04 起提供）。"
   echo "当前系统: ${PRETTY_NAME:-未知}"
   exit 1
-fi
-
-if ! grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
-  echo "警告: 未检测到 WSL 标识，将按普通 Ubuntu 26.04 环境继续。"
-  echo ""
 fi
 
 if ! command -v sudo &> /dev/null; then
@@ -73,7 +80,7 @@ if ! command -v sudo &> /dev/null; then
   exit 1
 fi
 
-if [ ! -f "$STARSHIP_SOURCE" ] || [ ! -f "$ZSH_SOURCE" ]; then
+if [ ! -f "$GHOSTTY_SOURCE" ] || [ ! -f "$STARSHIP_SOURCE" ] || [ ! -f "$ZSH_SOURCE" ]; then
   echo "错误: 未找到 Linux 配置文件，请在仓库根目录运行 bash linux/install.sh。"
   exit 1
 fi
@@ -83,16 +90,17 @@ fi
 # ==============================================================================
 echo ""
 echo "======================================"
-echo " WSL Ubuntu Shell Config 安装脚本"
+echo " Ubuntu 26.04 Shell Config 安装脚本"
 echo "======================================"
 echo ""
 echo "本脚本将执行以下操作:"
-echo "  1. 启用 universe 并通过 APT 安装终端工具和 zsh 插件"
+echo "  1. 启用 universe 并通过 APT 安装终端工具、Ghostty 和 zsh 插件"
 echo "  2. 添加 Yazi 官方签名 APT 源"
-echo "  3. 备份并安装 Starship 和 zsh 配置"
-echo "  4. 将当前用户的默认 Shell 切换为 zsh"
+echo "  3. 从官方 GitHub Release 安装 Maple Mono NF 字体"
+echo "  4. 备份并安装 Ghostty、Starship 和 zsh 配置"
+echo "  5. 将当前用户的默认 Shell 切换为 zsh"
 echo ""
-echo "已有 Starship 配置将备份到: $BACKUP_DIR"
+echo "已有 Ghostty 和 Starship 配置将备份到: $BACKUP_DIR"
 echo ""
 # read -r -p "是否继续？(y/n) " -n 1 REPLY < /dev/tty
 # echo ""
@@ -141,7 +149,10 @@ echo "==> 安装终端工具和 zsh 插件..."
 sudo apt-get update
 sudo apt-get install -y \
   file \
+  fontconfig \
+  unzip \
   zsh \
+  ghostty \
   starship \
   fzf \
   zoxide \
@@ -168,10 +179,64 @@ else
 fi
 
 # ==============================================================================
+# 安装 Maple Mono NF 字体
+# ==============================================================================
+# 字体由脚本自行下载，因为 Maple Mono 没有 Ubuntu 软件包
+echo "==> 安装 Maple Mono NF 字体..."
+if [ "$(cat "$FONT_DIR/.version" 2>/dev/null)" = "$MAPLE_VERSION" ]; then
+  echo "    Maple Mono NF $MAPLE_VERSION 已安装，跳过。"
+else
+  curl -fsSL "$MAPLE_RELEASE_URL/$MAPLE_ZIP_NAME" -o "$TMP_DIR/$MAPLE_ZIP_NAME"
+  curl -fsSL "$MAPLE_RELEASE_URL/MapleMono-NF.sha256" -o "$TMP_DIR/$MAPLE_ZIP_NAME.sha256"
+
+  # 官方的 .sha256 文件里只有裸哈希、没有文件名，无法用 sha256sum -c 校验，改为手工比对
+  EXPECTED_SHA="$(tr -d '[:space:]' < "$TMP_DIR/$MAPLE_ZIP_NAME.sha256")"
+  ACTUAL_SHA="$(sha256sum "$TMP_DIR/$MAPLE_ZIP_NAME" | cut -d' ' -f1)"
+  if [ "$EXPECTED_SHA" != "$ACTUAL_SHA" ]; then
+    echo "错误: 字体包校验失败，已中止安装。"
+    echo "  期望: $EXPECTED_SHA"
+    echo "  实际: $ACTUAL_SHA"
+    exit 1
+  fi
+
+  # 不假设 zip 内部的目录层级，按扩展名收集字体文件
+  rm -rf "$TMP_DIR/maple"
+  mkdir -p "$FONT_DIR" "$TMP_DIR/maple"
+  unzip -oq "$TMP_DIR/$MAPLE_ZIP_NAME" -d "$TMP_DIR/maple"
+  # 先清掉旧字体，避免版本升级后残留上一版的文件
+  rm -f "$FONT_DIR"/*.ttf
+  find "$TMP_DIR/maple" -name '*.ttf' -exec cp -f {} "$FONT_DIR/" \;
+
+  # 记录版本，下次运行时据此判断是否需要更新字体
+  printf '%s\n' "$MAPLE_VERSION" > "$FONT_DIR/.version"
+  fc-cache -f "$FONT_DIR" > /dev/null
+  echo "    ✓ $FONT_DIR ($MAPLE_VERSION)"
+fi
+
+# ==============================================================================
 # 安装配置文件
 # ==============================================================================
 echo "==> 安装配置文件..."
 mkdir -p "$HOME/.config"
+
+if [ -d "$GHOSTTY_TARGET" ] && [ ! -L "$GHOSTTY_TARGET" ]; then
+  echo "错误: $GHOSTTY_TARGET 是目录，无法安装 Ghostty 配置。"
+  exit 1
+fi
+
+if [ -f "$GHOSTTY_TARGET" ] && cmp -s "$GHOSTTY_SOURCE" "$GHOSTTY_TARGET"; then
+  echo "    Ghostty 配置已是最新，跳过。"
+else
+  if [ -e "$GHOSTTY_TARGET" ] || [ -L "$GHOSTTY_TARGET" ]; then
+    mkdir -p "$BACKUP_DIR"
+    cp -a "$GHOSTTY_TARGET" "$BACKUP_DIR/ghostty-config"
+    echo "    备份 $GHOSTTY_TARGET"
+    rm -f "$GHOSTTY_TARGET"
+  fi
+  mkdir -p "$(dirname "$GHOSTTY_TARGET")"
+  cp "$GHOSTTY_SOURCE" "$GHOSTTY_TARGET"
+  echo "    ✓ $GHOSTTY_TARGET"
+fi
 
 if [ -d "$STARSHIP_TARGET" ] && [ ! -L "$STARSHIP_TARGET" ]; then
   echo "错误: $STARSHIP_TARGET 是目录，无法安装 Starship 配置。"
@@ -193,12 +258,12 @@ fi
 
 # .zshrc 追加到用户已有配置尾部（不覆盖 marker 外的内容）
 if grep -Fq "$ZSH_MARKER_START" "$HOME/.zshrc" 2>/dev/null; then
-  echo "    .zshrc 中已存在 WSL Ubuntu 配置，跳过。"
+  echo "    .zshrc 中已存在 Linux 配置，跳过。"
 else
   {
     echo ""
     echo "$ZSH_MARKER_START"
-    echo "# 以下内容由 WSL Ubuntu shell 配置安装脚本自动追加"
+    echo "# 以下内容由 Ubuntu shell 配置安装脚本自动追加"
     echo "# 删除方法: 移除从 >>> 到 <<< 之间的所有内容"
     cat "$ZSH_SOURCE"
     echo "$ZSH_MARKER_END"
@@ -227,14 +292,16 @@ echo "======================================"
 echo " 安装完成！"
 echo "======================================"
 echo ""
-echo "请关闭并重新打开 WSL 终端生效。"
+echo "请重新打开终端（或注销后重新登录）生效。"
 echo ""
 if [ -d "$BACKUP_DIR" ]; then
-  echo "恢复旧 Starship 配置:"
+  echo "恢复旧配置:"
+  echo "  rm -f $GHOSTTY_TARGET"
+  echo "  cp -a $BACKUP_DIR/ghostty-config $GHOSTTY_TARGET"
   echo "  rm -f $STARSHIP_TARGET"
   echo "  cp -a $BACKUP_DIR/starship.toml $STARSHIP_TARGET"
   echo ""
 fi
 echo "卸载 zsh 配置:"
-echo "  删除 $HOME/.zshrc 中 '>>> wsl-ubuntu-shell-config >>>' 到 '<<< wsl-ubuntu-shell-config <<<' 之间的所有内容"
+echo "  删除 $HOME/.zshrc 中 '>>> linux-ghostty-terminal-config >>>' 到 '<<< linux-ghostty-terminal-config <<<' 之间的所有内容"
 echo ""
