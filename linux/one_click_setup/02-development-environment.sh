@@ -157,6 +157,13 @@ if [ -z "$WEBDAV_URL" ] || [ -z "$WEBDAV_USER" ] || [ -z "$WEBDAV_PASS" ]; then
     echo "错误：WebDAV 地址、用户名和密码均不能为空。" >&2
     exit 1
 fi
+case "$WEBDAV_URL" in
+    http://*|https://*) ;;
+    *)
+        echo "错误：WebDAV 地址必须以 http:// 或 https:// 开头（当前：${WEBDAV_URL}）。" >&2
+        exit 1
+        ;;
+esac
 
 # rclone 只用于本次同步：系统已有则直接使用，没有则临时安装、脚本结束时彻底卸载
 # 用户级目录遵循 XDG 规范，与 rclone 自身的默认路径保持一致
@@ -210,10 +217,14 @@ fi
 # rclone 的 WebDAV 密码参数必须使用 rclone obscure 处理后的值
 RCLONE_PASS="$(rclone obscure "$WEBDAV_PASS")"
 
-# 排除 Syncthing 的同步状态文件，避免把 .stfolder*、.stignore、#SyncVersion 带到本地
+# 通过独立参数传递连接信息：URL 中的冒号（协议、端口）在 rclone 连接串里需要转义，
+# 改用参数形式可以避免解析截断
 if ! rclone copy \
-    ":webdav,url=$WEBDAV_URL,user=$WEBDAV_USER,pass=$RCLONE_PASS:/swap/AI/.agents" \
+    ":webdav:/swap/AI/.agents" \
     "$HOME/.agents" \
+    --webdav-url "$WEBDAV_URL" \
+    --webdav-user "$WEBDAV_USER" \
+    --webdav-pass "$RCLONE_PASS" \
     --create-empty-src-dirs \
     --exclude '/.stfolder*/**' \
     --exclude '/.stignore' \

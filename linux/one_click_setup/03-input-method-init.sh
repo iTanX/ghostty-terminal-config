@@ -53,7 +53,7 @@ mkdir -p "$(dirname "$ENV_FILE")"
 # 注意：environment.d 格式要求不要写 export、不要加引号
 # 若文件已存在则不覆盖，避免冲掉用户自定义内容
 if [ -e "$ENV_FILE" ]; then
-  echo "已存在 $ENV_FILE，跳过写入（如需修改请手动编辑）。"
+  echo "已存在 ${ENV_FILE}，跳过写入（如需修改请手动编辑）。"
 else
   cat > "$ENV_FILE" <<'EOF'
 GTK_IM_MODULE=fcitx
