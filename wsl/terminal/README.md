@@ -17,9 +17,9 @@
 
 | 文件 | 说明 | 安装位置 |
 |------|------|---------|
-| `wsl/starship/starship.toml` | Starship 彩虹条提示符配置 | `~/.config/starship.toml` |
-| `wsl/zsh/.zshrc` | Ubuntu 版 zsh 配置 | 追加到 `~/.zshrc` 的受控标记块内 |
-| `wsl/install.sh` | Ubuntu 26.04 一键安装脚本 | 从仓库根目录运行 |
+| `wsl/terminal/starship/starship.toml` | Starship 彩虹条提示符配置 | `~/.config/starship.toml` |
+| `wsl/terminal/zsh/.zshrc` | Ubuntu 版 zsh 配置 | 追加到 `~/.zshrc` 的受控标记块内 |
+| `wsl/terminal/install.sh` | Ubuntu 26.04 一键安装脚本 | 从仓库根目录运行 |
 
 ## 前置条件
 
@@ -59,7 +59,7 @@ cd ghostty-terminal-config
 ### 2. 运行安装脚本
 
 ```bash
-bash wsl/install.sh
+bash wsl/terminal/install.sh
 ```
 
 安装前会询问确认，确认后自动执行：
@@ -152,7 +152,7 @@ if [ -e ~/.config/starship.toml ] || [ -L ~/.config/starship.toml ]; then
 fi
 
 rm -f ~/.config/starship.toml
-cp wsl/starship/starship.toml ~/.config/starship.toml
+cp wsl/terminal/starship/starship.toml ~/.config/starship.toml
 ```
 
 将 zsh 配置追加到现有文件尾部：
@@ -163,7 +163,7 @@ cp wsl/starship/starship.toml ~/.config/starship.toml
   echo "# >>> wsl-ubuntu-shell-config >>>"
   echo "# 以下内容由 WSL Ubuntu shell 配置安装脚本自动追加"
   echo "# 删除方法: 移除从 >>> 到 <<< 之间的所有内容"
-  cat wsl/zsh/.zshrc
+  cat wsl/terminal/zsh/.zshrc
   echo "# <<< wsl-ubuntu-shell-config <<<"
 } >> ~/.zshrc
 ```
