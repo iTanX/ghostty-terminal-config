@@ -3,13 +3,13 @@
 # ==============================================================================
 # ghostty-terminal-config 一键安装脚本
 # ==============================================================================
-# 用法:
-#   bash <(curl -fsSL https://raw.githubusercontent.com/justhalfbit/ghostty-terminal-config/main/install.sh)
+# 用法（在脚本所在目录执行）:
+#   bash install.sh
 #
 # 说明:
 #   1. 安装 Homebrew 依赖（字体、终端工具、zsh 插件）
 #   2. 备份已有配置到 ~/.config-backup/YYYYMMDD_HHMMSS/
-#   3. 从 GitHub 下载配置文件到目标位置
+#   3. 安装仓库内的 Ghostty、Starship 和 zsh 配置
 #
 # 恢复备份:
 #   cp ~/.config-backup/<时间戳>/ghostty-config ~/.config/ghostty/config
@@ -21,15 +21,12 @@
 
 set -e
 
-REPO_URL="https://github.com/justhalfbit/ghostty-terminal-config.git"
 BACKUP_DIR="$HOME/.config-backup/$(date +%Y%m%d_%H%M%S)"
-TMP_DIR="$(mktemp -d)"
-
-# 清理临时目录
-cleanup() {
-  rm -rf "$TMP_DIR"
-}
-trap cleanup EXIT
+# 配置随仓库提供，全部以脚本所在目录为基准定位
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+GHOSTTY_SOURCE="$SCRIPT_DIR/ghostty/config"
+STARSHIP_SOURCE="$SCRIPT_DIR/starship/starship.toml"
+ZSH_SOURCE="$SCRIPT_DIR/zsh/.zshrc"
 
 # ==============================================================================
 # 用户确认
@@ -62,11 +59,6 @@ if ! command -v brew &> /dev/null; then
   exit 1
 fi
 
-if ! command -v git &> /dev/null; then
-  echo "错误: 未检测到 git，请先安装 Xcode Command Line Tools: xcode-select --install"
-  exit 1
-fi
-
 # ==============================================================================
 # 安装依赖
 # ==============================================================================
@@ -80,10 +72,13 @@ fi
 brew install starship fzf zoxide eza bat yazi zsh-autosuggestions zsh-syntax-highlighting zsh-completions
 
 # ==============================================================================
-# 下载配置文件
+# 检查配置文件
 # ==============================================================================
-echo "==> 下载配置文件..."
-git clone --depth 1 "$REPO_URL" "$TMP_DIR/repo"
+echo "==> 检查配置文件..."
+if [ ! -f "$GHOSTTY_SOURCE" ] || [ ! -f "$STARSHIP_SOURCE" ] || [ ! -f "$ZSH_SOURCE" ]; then
+  echo "错误: 未找到配置文件，请确认以下文件存在于 $SCRIPT_DIR 下: ghostty/config、starship/starship.toml、zsh/.zshrc"
+  exit 1
+fi
 
 # ==============================================================================
 # 备份已有配置
@@ -123,8 +118,8 @@ fi
 echo "==> 安装配置文件..."
 mkdir -p ~/.config/ghostty
 
-cp "$TMP_DIR/repo/ghostty/config" ~/.config/ghostty/config
-cp "$TMP_DIR/repo/starship/starship.toml" ~/.config/starship.toml
+cp "$GHOSTTY_SOURCE" ~/.config/ghostty/config
+cp "$STARSHIP_SOURCE" ~/.config/starship.toml
 echo "    ✓ ~/.config/ghostty/config"
 echo "    ✓ ~/.config/starship.toml"
 
@@ -137,7 +132,7 @@ else
     echo "# >>> ghostty-terminal-config >>>"
     echo "# 以下内容由 ghostty-terminal-config 安装脚本自动追加"
     echo "# 删除方法: 移除从 >>> 到 <<< 之间的所有内容"
-    cat "$TMP_DIR/repo/zsh/.zshrc"
+    cat "$ZSH_SOURCE"
     echo "# <<< ghostty-terminal-config <<<"
   } >> ~/.zshrc
   echo "    ✓ ~/.zshrc (已追加到尾部)"

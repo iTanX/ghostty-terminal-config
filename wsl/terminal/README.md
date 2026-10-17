@@ -2,7 +2,7 @@
 
 适用于 **WSL 2 下的 Ubuntu 26.04 LTS**，提供 Starship 彩虹条提示符、zsh 插件、模糊搜索、智能目录跳转、文件管理器和常用命令别名。
 
-本目录与仓库根目录的 macOS 配置完全独立，只安装和配置 WSL 内的 Shell 工具，不安装或修改终端模拟器配置。
+本目录与仓库中的 macOS 配置完全独立，只安装和配置 WSL 内的 Shell 工具，不安装或修改终端模拟器配置。
 
 ## 效果
 
@@ -17,9 +17,9 @@
 
 | 文件 | 说明 | 安装位置 |
 |------|------|---------|
-| `wsl/terminal/starship/starship.toml` | Starship 彩虹条提示符配置 | `~/.config/starship.toml` |
-| `wsl/terminal/zsh/.zshrc` | Ubuntu 版 zsh 配置 | 追加到 `~/.zshrc` 的受控标记块内 |
-| `wsl/terminal/install.sh` | Ubuntu 26.04 一键安装脚本 | 从仓库根目录运行 |
+| `starship/starship.toml` | Starship 彩虹条提示符配置 | `~/.config/starship.toml` |
+| `zsh/.zshrc` | Ubuntu 版 zsh 配置 | 追加到 `~/.zshrc` 的受控标记块内 |
+| `install.sh` | Ubuntu 26.04 一键安装脚本 | 可在任意目录运行（自动定位配置） |
 
 ## 前置条件
 
@@ -42,27 +42,13 @@ Starship 和 eza 使用 Nerd Font 图标。通过 Windows Terminal 或其他 Win
 
 ## 一键安装
 
-### 1. 下载仓库
-
-在 WSL Ubuntu 中运行：
+在本 README 所在目录执行：
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y git
-cd ~
-git clone --depth 1 https://github.com/iTanX/ghostty-terminal-config.git
-cd ghostty-terminal-config
+bash install.sh
 ```
 
-如果已经下载仓库，只需进入仓库根目录。
-
-### 2. 运行安装脚本
-
-```bash
-bash wsl/terminal/install.sh
-```
-
-安装前会询问确认，确认后自动执行：
+脚本会自动执行：
 
 1. 检查当前系统是否为 Ubuntu 26.04 LTS
 2. 启用 Ubuntu `universe` 源
@@ -142,6 +128,8 @@ git clone --depth 1 \
 
 ### 2. 备份并部署配置
 
+以下命令在本 README 所在目录（`wsl/terminal/`）执行。
+
 ```bash
 BACKUP_DIR="$HOME/.config-backup/$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$BACKUP_DIR" ~/.config
@@ -152,7 +140,7 @@ if [ -e ~/.config/starship.toml ] || [ -L ~/.config/starship.toml ]; then
 fi
 
 rm -f ~/.config/starship.toml
-cp wsl/terminal/starship/starship.toml ~/.config/starship.toml
+cp starship/starship.toml ~/.config/starship.toml
 ```
 
 将 zsh 配置追加到现有文件尾部：
@@ -163,7 +151,7 @@ cp wsl/terminal/starship/starship.toml ~/.config/starship.toml
   echo "# >>> wsl-ubuntu-shell-config >>>"
   echo "# 以下内容由 WSL Ubuntu shell 配置安装脚本自动追加"
   echo "# 删除方法: 移除从 >>> 到 <<< 之间的所有内容"
-  cat wsl/terminal/zsh/.zshrc
+  cat zsh/.zshrc
   echo "# <<< wsl-ubuntu-shell-config <<<"
 } >> ~/.zshrc
 ```

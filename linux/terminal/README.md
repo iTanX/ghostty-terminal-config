@@ -4,7 +4,7 @@
 
 > WSL 用户请改用 [`wsl/`](../../wsl/) 目录。WSL 内没有图形界面，不需要也无法安装 Ghostty，那边只配置 Shell 工具。
 
-本目录与仓库根目录的 macOS 配置相互独立，各自安装对应平台的终端模拟器与字体。
+本目录与仓库中的 macOS 配置相互独立，各自安装对应平台的终端模拟器与字体。
 
 ## 效果
 
@@ -20,10 +20,10 @@
 
 | 文件 | 说明 | 安装位置 |
 |------|------|---------|
-| `linux/terminal/ghostty/config` | Ghostty 终端配置（字体、主题、窗口、光标） | `~/.config/ghostty/config` |
-| `linux/terminal/starship/starship.toml` | Starship 彩虹条提示符配置 | `~/.config/starship.toml` |
-| `linux/terminal/zsh/.zshrc` | Ubuntu 版 zsh 配置 | 追加到 `~/.zshrc` 的受控标记块内 |
-| `linux/terminal/install.sh` | Ubuntu 26.04 一键安装脚本 | 从仓库根目录运行 |
+| `ghostty/config` | Ghostty 终端配置（字体、主题、窗口、光标） | `~/.config/ghostty/config` |
+| `starship/starship.toml` | Starship 彩虹条提示符配置 | `~/.config/starship.toml` |
+| `zsh/.zshrc` | Ubuntu 版 zsh 配置 | 追加到 `~/.zshrc` 的受控标记块内 |
+| `install.sh` | Ubuntu 26.04 一键安装脚本 | 可在任意目录运行（自动定位配置） |
 
 ## 前置条件
 
@@ -47,22 +47,10 @@
 
 ## 一键安装
 
-### 1. 下载仓库
+在本 README 所在目录执行：
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y git
-cd ~
-git clone --depth 1 https://github.com/iTanX/ghostty-terminal-config.git
-cd ghostty-terminal-config
-```
-
-如果已经下载仓库，只需进入仓库根目录。
-
-### 2. 运行安装脚本
-
-```bash
-bash linux/terminal/install.sh
+bash install.sh
 ```
 
 脚本会自动执行：
@@ -98,7 +86,7 @@ bash linux/terminal/install.sh
 | zsh-syntax-highlighting | 命令语法高亮 | Ubuntu `universe` |
 | zsh-completions | Tab 补全增强 | [zsh-users/zsh-completions](https://github.com/zsh-users/zsh-completions) |
 
-字体版本固定在 `linux/terminal/install.sh` 顶部的 `MAPLE_VERSION`（当前 `v7.9`，与 macOS 端 cask 对齐），升级时只需改这一处。
+字体版本固定在 `install.sh` 顶部的 `MAPLE_VERSION`（当前 `v7.9`，与 macOS 端 cask 对齐），升级时只需改这一处。
 
 Yazi 官方 APT 源提供 `amd64` 和 `arm64` 稳定版软件包。脚本不会使用已废弃的 `apt-key`，也不会安装 Rust/Cargo 编译环境。
 
@@ -161,6 +149,8 @@ fc-cache -f "$FONT_DIR"
 
 ### 3. 备份并部署配置
 
+以下命令在本 README 所在目录（`linux/terminal/`）执行。
+
 ```bash
 BACKUP_DIR="$HOME/.config-backup/$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$BACKUP_DIR" ~/.config/ghostty
@@ -174,8 +164,8 @@ if [ -e ~/.config/starship.toml ] || [ -L ~/.config/starship.toml ]; then
 fi
 
 rm -f ~/.config/ghostty/config ~/.config/starship.toml
-cp linux/terminal/ghostty/config ~/.config/ghostty/config
-cp linux/terminal/starship/starship.toml ~/.config/starship.toml
+cp ghostty/config ~/.config/ghostty/config
+cp starship/starship.toml ~/.config/starship.toml
 ```
 
 将 zsh 配置追加到现有文件尾部：
@@ -186,7 +176,7 @@ cp linux/terminal/starship/starship.toml ~/.config/starship.toml
   echo "# >>> linux-ghostty-terminal-config >>>"
   echo "# 以下内容由 Ubuntu shell 配置安装脚本自动追加"
   echo "# 删除方法: 移除从 >>> 到 <<< 之间的所有内容"
-  cat linux/terminal/zsh/.zshrc
+  cat zsh/.zshrc
   echo "# <<< linux-ghostty-terminal-config <<<"
 } >> ~/.zshrc
 ```
@@ -294,7 +284,7 @@ zsh 配置不会覆盖原文件，而是写在以下标记之间：
 
 ### 窗口没有毛玻璃模糊效果
 
-`background-blur` 只在支持客户端模糊的桌面环境下生效，例如 KDE Plasma。Ubuntu 默认的 GNOME 不支持，这是桌面环境的限制而不是配置问题；窗口透明度仍然正常生效。如需模糊效果可改用 KDE Plasma，或删除 `linux/terminal/ghostty/config` 中的 `background-blur` 一行。
+`background-blur` 只在支持客户端模糊的桌面环境下生效，例如 KDE Plasma。Ubuntu 默认的 GNOME 不支持，这是桌面环境的限制而不是配置问题；窗口透明度仍然正常生效。如需模糊效果可改用 KDE Plasma，或删除 `ghostty/config` 中的 `background-blur` 一行。
 
 ### 图标显示为方框
 

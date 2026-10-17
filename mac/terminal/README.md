@@ -18,8 +18,10 @@ macOS 下基于 Ghostty + Starship + zsh 插件的终端美化方案，从 iTerm
 
 ## 一键安装
 
+在本 README 所在目录执行：
+
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/justhalfbit/ghostty-terminal-config/main/install.sh)
+bash install.sh
 ```
 
 安装前会询问确认，确认后自动执行：
@@ -80,28 +82,20 @@ brew install --cask ghostty
 brew install starship fzf zoxide eza bat yazi zsh-autosuggestions zsh-syntax-highlighting zsh-completions
 ```
 
-### 2. 下载配置文件
+### 2. 安装配置文件
 
-```bash
-git clone --depth 1 https://github.com/justhalfbit/ghostty-terminal-config.git /tmp/ghostty-config
-```
-
-### 3. 安装配置文件
+以下命令在本 README 所在目录（`mac/terminal/`）执行。
 
 ```bash
 mkdir -p ~/.config/ghostty
-cp /tmp/ghostty-config/ghostty/config ~/.config/ghostty/config
-cp /tmp/ghostty-config/starship/starship.toml ~/.config/starship.toml
-cat /tmp/ghostty-config/zsh/.zshrc >> ~/.zshrc
+cp ghostty/config ~/.config/ghostty/config
+cp starship/starship.toml ~/.config/starship.toml
+cat zsh/.zshrc >> ~/.zshrc
 ```
 
 > 注意：zsh 配置是追加到 `~/.zshrc` 尾部，不会覆盖已有内容。如果重复执行需手动去重。
 
-### 4. 清理并重启
-
-```bash
-rm -rf /tmp/ghostty-config
-```
+### 3. 重启
 
 重启 Ghostty 终端生效。
 

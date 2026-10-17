@@ -10,18 +10,10 @@ wsl --install -d Ubuntu-26.04 --name Agul --location D:\5-Virtual\WSL\Agul
 
 ## ZSH
 
-一键配置 `zsh`：
+在本目录（`wsl/one_click_setup`）执行：
 
 ```sh
-# 拉取 shell 配置
-sudo apt-get update
-sudo apt-get install -y git
-mkdir -p ~/temp
-cd ~/temp
-git clone --depth 1 https://github.com/iTanX/ghostty-terminal-config.git
-# 执行设置脚本
-cd ghostty-terminal-config
-bash linux/install.sh
+bash 01-basic-config.sh
 ```
 
 > [!IMPORTANT]
@@ -29,6 +21,14 @@ bash linux/install.sh
 > ZSH 配置完成后需要重启 WSL 实例使其生效！！！
 
 # AI 开发环境
+
+本章及「AI 工具」「链接 Windows」章节的全部步骤已整合到同目录的 `02-development-environment.sh`，可直接运行：
+
+```sh
+bash 02-development-environment.sh
+```
+
+以下为手动步骤，供参考。
 
 ## Git
 
@@ -43,7 +43,7 @@ bash linux/install.sh
 安装 ​`python-is-python3`​ 使得 ​`python`​ 命令指向 ​`python3`：
 
 ```sh
-sudo apt install python-is-python3
+sudo apt install -y python-is-python3
 ```
 
 ### uv
@@ -60,7 +60,9 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ```sh
 # Download and install nvm:
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.7/install.sh | bash
+# 默认 Shell 已是 zsh，但当前会话的 $SHELL 可能仍是 bash，
+# nvm 安装器按 $SHELL 决定写哪个配置文件，因此显式指定写入 .zshrc。
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.7/install.sh | PROFILE="$HOME/.zshrc" bash
 
 # in lieu of restarting the shell
 \. "$HOME/.nvm/nvm.sh"
@@ -83,7 +85,7 @@ npm -v
 
 ```sh
 # SDKMAN 依赖 zip 与 unzip。
-sudo apt install zip unzip
+sudo apt install -y zip unzip
 
 curl -s "https://get.sdkman.io" | zsh
 
@@ -134,12 +136,13 @@ npm install -g @openai/codex
 使用官方命令安装 ​`CCSwitch CLI`：
 
 ```sh
-curl -fsSL https://github.com/SaladDay/cc-switch-cli/releases/latest/download/install.sh | bash
+# 暂时注释，不安装（与 02-development-environment.sh 保持一致）
+# curl -fsSL https://github.com/SaladDay/cc-switch-cli/releases/latest/download/install.sh | bash
 ```
 
 ## 链接 Windows
 
-WSL 链接使用 Windows 已有 AI 配置：
+WSL 链接使用 Windows 已有 AI 配置（该步骤已包含在 `02-development-environment.sh` 中）：
 
 ```sh
 #!/usr/bin/env bash

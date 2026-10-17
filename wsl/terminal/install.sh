@@ -3,8 +3,8 @@
 # ==============================================================================
 # WSL Ubuntu Shell Config 一键安装脚本
 # ==============================================================================
-# 用法:
-#   bash wsl/terminal/install.sh
+# 用法（在脚本所在目录执行）:
+#   bash install.sh
 #
 # 说明:
 #   1. 启用 universe 并安装终端工具和 zsh 插件
@@ -74,7 +74,7 @@ if ! command -v sudo &> /dev/null; then
 fi
 
 if [ ! -f "$STARSHIP_SOURCE" ] || [ ! -f "$ZSH_SOURCE" ]; then
-  echo "错误: 未找到 Linux 配置文件，请在仓库根目录运行 bash wsl/terminal/install.sh。"
+  echo "错误: 未找到配置文件，请确认以下文件存在于 $SCRIPT_DIR 下: starship/starship.toml、zsh/.zshrc"
   exit 1
 fi
 
