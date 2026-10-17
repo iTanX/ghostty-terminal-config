@@ -4,7 +4,7 @@
 # Ubuntu 26.04 Shell Config 一键安装脚本
 # ==============================================================================
 # 用法:
-#   bash linux/install.sh
+#   bash linux/terminal/install.sh
 #
 # 说明:
 #   1. 启用 universe 并安装终端工具、Ghostty 和 zsh 插件
@@ -81,7 +81,7 @@ if ! command -v sudo &> /dev/null; then
 fi
 
 if [ ! -f "$GHOSTTY_SOURCE" ] || [ ! -f "$STARSHIP_SOURCE" ] || [ ! -f "$ZSH_SOURCE" ]; then
-  echo "错误: 未找到 Linux 配置文件，请在仓库根目录运行 bash linux/install.sh。"
+  echo "错误: 未找到 Linux 配置文件，请在仓库根目录运行 bash linux/terminal/install.sh。"
   exit 1
 fi
 
