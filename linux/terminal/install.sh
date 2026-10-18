@@ -9,9 +9,10 @@
 # 说明:
 #   1. 启用 universe 并安装终端工具、Ghostty 和 zsh 插件
 #   2. 添加 Yazi 官方 APT 源并安装 Yazi
-#   3. 安装 Maple Mono NF 字体到 ~/.local/share/fonts/maple-mono-nf
+#   3. 安装 Maple Mono NF CN 字体到 ~/.local/share/fonts/maple-mono-nf-cn
 #   4. 备份已有 Ghostty 和 Starship 配置到 ~/.config-backup/YYYYMMDD_HHMMSS/
 #   5. 安装 Ghostty、Starship 和 zsh 配置，并将默认 Shell 切换为 zsh
+#   6. 修复 Ubuntu 中文环境的 Ghostty 字体匹配，设置 Ptyxis 为 CN Regular 10
 #
 # 恢复备份:
 #   rm -f ~/.config/ghostty/config
@@ -26,12 +27,15 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 BACKUP_DIR="$HOME/.config-backup/$(date +%Y%m%d_%H%M%S)"
 TMP_DIR="$(mktemp -d)"
 GHOSTTY_SOURCE="$SCRIPT_DIR/ghostty/config"
-GHOSTTY_TARGET="$HOME/.config/ghostty/config"
+GHOSTTY_TARGET="$CONFIG_DIR/ghostty/config"
 STARSHIP_SOURCE="$SCRIPT_DIR/starship/starship.toml"
-STARSHIP_TARGET="$HOME/.config/starship.toml"
+STARSHIP_TARGET="$CONFIG_DIR/starship.toml"
+FONT_SETUP_SCRIPT="$SCRIPT_DIR/configure-fonts.sh"
+FONTCONFIG_SOURCE="$SCRIPT_DIR/fontconfig/99-maple-mono-nf-cn-ghostty.conf"
 ZSH_SOURCE="$SCRIPT_DIR/zsh/.zshrc"
 ZSH_COMPLETIONS_DIR="$HOME/.local/share/zsh-completions"
 ZSH_MARKER_START="# >>> linux-ghostty-terminal-config >>>"
@@ -40,13 +44,14 @@ YAZI_KEY_URL="https://yazi-rs.github.io/builds/yazi-keyring.gpg"
 YAZI_KEYRING="/usr/share/keyrings/yazi-keyring.gpg"
 YAZI_SOURCE_LIST="/etc/apt/sources.list.d/yazi.list"
 YAZI_APT_SOURCE="deb [signed-by=$YAZI_KEYRING] https://yazi-rs.github.io/builds/ stable main"
-# Maple Mono NF 没有 Ubuntu 软件包，只能从 GitHub Release 下载
-# 版本与 macOS 端的 font-maple-mono-nf cask 保持对齐，升级时只改这里
+# Maple Mono NF CN 没有 Ubuntu 软件包，只能从 GitHub Release 下载
+# 固定版本，升级时只改这里
 MAPLE_VERSION="v7.9"
 MAPLE_RELEASE_URL="https://github.com/subframe7536/maple-font/releases/download/$MAPLE_VERSION"
-MAPLE_ZIP_NAME="MapleMono-NF.zip"
+MAPLE_ZIP_NAME="MapleMono-NF-CN.zip"
+MAPLE_SHA_NAME="MapleMono-NF-CN.sha256"
 # 用户级字体目录，无需 sudo，fontconfig 会自动扫描
-FONT_DIR="$HOME/.local/share/fonts/maple-mono-nf"
+FONT_DIR="$HOME/.local/share/fonts/maple-mono-nf-cn"
 
 # 清理下载 Yazi 密钥和字体包时使用的临时目录
 cleanup() {
@@ -84,6 +89,10 @@ if [ ! -f "$GHOSTTY_SOURCE" ] || [ ! -f "$STARSHIP_SOURCE" ] || [ ! -f "$ZSH_SOU
   echo "错误: 未找到配置文件，请确认以下文件存在于 $SCRIPT_DIR 下: ghostty/config、starship/starship.toml、zsh/.zshrc"
   exit 1
 fi
+if [ ! -f "$FONT_SETUP_SCRIPT" ] || [ ! -f "$FONTCONFIG_SOURCE" ]; then
+  echo "错误: 未找到 configure-fonts.sh 或 Fontconfig 规则，请保留完整的 terminal 目录。"
+  exit 1
+fi
 
 # ==============================================================================
 # 用户确认
@@ -96,9 +105,10 @@ echo ""
 echo "本脚本将执行以下操作:"
 echo "  1. 启用 universe 并通过 APT 安装终端工具、Ghostty 和 zsh 插件"
 echo "  2. 添加 Yazi 官方签名 APT 源"
-echo "  3. 从官方 GitHub Release 安装 Maple Mono NF 字体"
+echo "  3. 从官方 GitHub Release 安装 Maple Mono NF CN 字体"
 echo "  4. 备份并安装 Ghostty、Starship 和 zsh 配置"
 echo "  5. 将当前用户的默认 Shell 切换为 zsh"
+echo "  6. 修复中文环境字体匹配，设置 Ptyxis 为 Maple Mono NF CN Regular 10"
 echo ""
 echo "已有 Ghostty 和 Starship 配置将备份到: $BACKUP_DIR"
 echo ""
@@ -150,6 +160,7 @@ sudo apt-get update
 sudo apt-get install -y \
   file \
   fontconfig \
+  libglib2.0-bin \
   unzip \
   zsh \
   ghostty \
@@ -179,18 +190,19 @@ else
 fi
 
 # ==============================================================================
-# 安装 Maple Mono NF 字体
+# 安装 Maple Mono NF CN 字体
 # ==============================================================================
 # 字体由脚本自行下载，因为 Maple Mono 没有 Ubuntu 软件包
-echo "==> 安装 Maple Mono NF 字体..."
-if [ "$(cat "$FONT_DIR/.version" 2>/dev/null)" = "$MAPLE_VERSION" ]; then
-  echo "    Maple Mono NF $MAPLE_VERSION 已安装，跳过。"
+echo "==> 安装 Maple Mono NF CN 字体..."
+if [ "$(cat "$FONT_DIR/.version" 2>/dev/null)" = "$MAPLE_VERSION" ] &&
+   [ -f "$FONT_DIR/MapleMono-NF-CN-Regular.ttf" ]; then
+  echo "    Maple Mono NF CN $MAPLE_VERSION 已安装，跳过下载。"
 else
   curl -fsSL "$MAPLE_RELEASE_URL/$MAPLE_ZIP_NAME" -o "$TMP_DIR/$MAPLE_ZIP_NAME"
-  curl -fsSL "$MAPLE_RELEASE_URL/MapleMono-NF.sha256" -o "$TMP_DIR/$MAPLE_ZIP_NAME.sha256"
+  curl -fsSL "$MAPLE_RELEASE_URL/$MAPLE_SHA_NAME" -o "$TMP_DIR/$MAPLE_SHA_NAME"
 
   # 官方的 .sha256 文件里只有裸哈希、没有文件名，无法用 sha256sum -c 校验，改为手工比对
-  EXPECTED_SHA="$(tr -d '[:space:]' < "$TMP_DIR/$MAPLE_ZIP_NAME.sha256")"
+  EXPECTED_SHA="$(tr -d '[:space:]' < "$TMP_DIR/$MAPLE_SHA_NAME")"
   ACTUAL_SHA="$(sha256sum "$TMP_DIR/$MAPLE_ZIP_NAME" | cut -d' ' -f1)"
   if [ "$EXPECTED_SHA" != "$ACTUAL_SHA" ]; then
     echo "错误: 字体包校验失败，已中止安装。"
@@ -203,21 +215,27 @@ else
   rm -rf "$TMP_DIR/maple"
   mkdir -p "$FONT_DIR" "$TMP_DIR/maple"
   unzip -oq "$TMP_DIR/$MAPLE_ZIP_NAME" -d "$TMP_DIR/maple"
-  # 先清掉旧字体，避免版本升级后残留上一版的文件
+  if [ -z "$(find "$TMP_DIR/maple" -type f -name 'MapleMono-NF-CN-Regular.ttf' -print -quit)" ]; then
+    echo "错误: 字体包中未找到 MapleMono-NF-CN-Regular.ttf。"
+    exit 1
+  fi
+  # 验证解压结果后再替换旧版本，避免残留已改名的字体文件。
   rm -f "$FONT_DIR"/*.ttf
-  find "$TMP_DIR/maple" -name '*.ttf' -exec cp -f {} "$FONT_DIR/" \;
+  find "$TMP_DIR/maple" -type f -name '*.ttf' -exec cp -f {} "$FONT_DIR/" \;
 
   # 记录版本，下次运行时据此判断是否需要更新字体
   printf '%s\n' "$MAPLE_VERSION" > "$FONT_DIR/.version"
-  fc-cache -f "$FONT_DIR" > /dev/null
   echo "    ✓ $FONT_DIR ($MAPLE_VERSION)"
 fi
+
+# 字体版本未变化时也执行，确保旧安装可以补上中文字体匹配修复和 Ptyxis 设置。
+bash "$FONT_SETUP_SCRIPT" "$BACKUP_DIR"
 
 # ==============================================================================
 # 安装配置文件
 # ==============================================================================
 echo "==> 安装配置文件..."
-mkdir -p "$HOME/.config"
+mkdir -p "$CONFIG_DIR"
 
 if [ -d "$GHOSTTY_TARGET" ] && [ ! -L "$GHOSTTY_TARGET" ]; then
   echo "错误: $GHOSTTY_TARGET 是目录，无法安装 Ghostty 配置。"
@@ -293,13 +311,22 @@ echo " 安装完成！"
 echo "======================================"
 echo ""
 echo "请重新打开终端（或注销后重新登录）生效。"
+echo "默认字体: Ptyxis = Maple Mono NF CN Regular 10；Ghostty = Maple Mono NF CN，10 号。"
+echo "若 Ghostty 仍在运行，请完全退出旧进程后重新打开。"
 echo ""
 if [ -d "$BACKUP_DIR" ]; then
   echo "恢复旧配置:"
-  echo "  rm -f $GHOSTTY_TARGET"
-  echo "  cp -a $BACKUP_DIR/ghostty-config $GHOSTTY_TARGET"
-  echo "  rm -f $STARSHIP_TARGET"
-  echo "  cp -a $BACKUP_DIR/starship.toml $STARSHIP_TARGET"
+  if [ -e "$BACKUP_DIR/ghostty-config" ] || [ -L "$BACKUP_DIR/ghostty-config" ]; then
+    echo "  rm -f $GHOSTTY_TARGET"
+    echo "  cp -a $BACKUP_DIR/ghostty-config $GHOSTTY_TARGET"
+  fi
+  if [ -e "$BACKUP_DIR/starship.toml" ] || [ -L "$BACKUP_DIR/starship.toml" ]; then
+    echo "  rm -f $STARSHIP_TARGET"
+    echo "  cp -a $BACKUP_DIR/starship.toml $STARSHIP_TARGET"
+  fi
+  if [ -f "$BACKUP_DIR/restore-ptyxis-font.sh" ]; then
+    echo "恢复自带终端字体: bash $BACKUP_DIR/restore-ptyxis-font.sh"
+  fi
   echo ""
 fi
 echo "卸载 zsh 配置:"

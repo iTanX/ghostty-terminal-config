@@ -8,7 +8,9 @@
 
 ## 效果
 
-- Ghostty 终端：半透明窗口、Catppuccin Mocha 主题、Maple Mono NF 字体
+- Ghostty 终端：半透明窗口、Catppuccin Mocha 主题、Maple Mono NF CN 字体、10 号
+- Ubuntu 自带终端 Ptyxis：自动关闭系统字体，设置 Maple Mono NF CN Regular、10 号
+- 修复 Ubuntu 中文语言环境将 Ghostty 字体替换为 DejaVu / Noto 的问题
 - Starship 彩虹条提示符
 - zsh Tab 补全、语法高亮和历史命令自动建议
 - fzf 模糊搜索历史命令与文件
@@ -24,6 +26,10 @@
 | `starship/starship.toml` | Starship 彩虹条提示符配置 | `~/.config/starship.toml` |
 | `zsh/.zshrc` | Ubuntu 版 zsh 配置 | 追加到 `~/.zshrc` 的受控标记块内 |
 | `install.sh` | Ubuntu 26.04 一键安装脚本 | 可在任意目录运行（自动定位配置） |
+| `configure-fonts.sh` | 设置字体匹配规则和 Ptyxis 字体，安装器自动调用，也可单独运行 | 当前用户的 Fontconfig / GSettings |
+| `fontconfig/99-maple-mono-nf-cn-ghostty.conf` | 保留明确指定的 Maple CN 字体优先级 | `~/.config/fontconfig/conf.d/` |
+
+配置目录遵循 `XDG_CONFIG_HOME`，未设置时使用 `~/.config`。Ptyxis 和 Ghostty 的默认字重均为 Regular；`eza` 等程序仍可为目录名请求粗体，Starship 彩虹条路径保持原有常规样式。
 
 ## 前置条件
 
@@ -41,7 +47,7 @@
 | `macos-titlebar-style` | 标签页融入标题栏，仅 macOS 支持 |
 | `window-save-state` | 退出后保留窗口状态，仅 macOS 支持，在 Linux 上无任何效果 |
 
-其余字体、字号、主题、内边距、透明度、光标和交互设置与 macOS 版保持一致。
+Linux 版使用含中文的 NF CN 字体，字号为 10，并额外设置 Ptyxis 的字体和 Ubuntu 的 Fontconfig 规则。主题、内边距、透明度、光标和交互设置与 macOS 版保持一致。
 
 另外 `background-blur`（毛玻璃模糊）只在部分桌面环境下生效，例如 KDE Plasma。Ubuntu 默认的 GNOME 不支持客户端模糊，此时窗口透明度仍然生效，只是没有模糊效果。
 
@@ -60,10 +66,12 @@ bash install.sh
 3. 添加使用独立 keyring 和 `signed-by` 的 Yazi 官方稳定版 APT 源
 4. 安装 Ghostty、zsh、Starship、fzf、zoxide、eza、bat、Yazi 和两个 zsh 插件
 5. 从官方仓库安装 zsh-completions 到 `~/.local/share/zsh-completions`
-6. 从官方 GitHub Release 下载 Maple Mono NF 字体并校验完整性，安装到 `~/.local/share/fonts/maple-mono-nf`
-7. 备份并安装 Ghostty 和 Starship 配置
-8. 将 Linux zsh 配置追加到 `~/.zshrc`
-9. 将当前用户的默认 Shell 切换为 zsh
+6. 从官方 GitHub Release 下载 Maple Mono NF CN 字体并校验完整性，安装到 `~/.local/share/fonts/maple-mono-nf-cn`
+7. 安装 Fontconfig 兼容规则，刷新缓存并验证中英文环境下均匹配 Maple CN
+8. 将 Ptyxis 的字体设为 `Maple Mono NF CN Regular 10`，并关闭“使用系统字体”
+9. 备份并安装 Ghostty（CN 字体、10 号）和 Starship 配置
+10. 将 Linux zsh 配置追加到 `~/.zshrc`
+11. 将当前用户的默认 Shell 切换为 zsh
 
 ### 3. 重新登录
 
@@ -74,7 +82,8 @@ bash install.sh
 | 工具 | 用途 | 来源 |
 |------|------|------|
 | Ghostty | GPU 加速终端模拟器 | Ubuntu 官方软件源（26.04 起） |
-| Maple Mono NF | 终端字体（Nerd Font，中文显示优秀） | [Maple Font Release](https://github.com/subframe7536/maple-font/releases)，脚本下载并校验 sha256 |
+| Maple Mono NF CN | 终端字体（含中文字形和 Nerd Font 图标） | [Maple Font Release](https://github.com/subframe7536/maple-font/releases)，脚本下载并校验 sha256 |
+| libglib2.0-bin | 通过 GSettings 设置 Ptyxis 字体 | Ubuntu APT |
 | zsh | Shell | Ubuntu APT |
 | Starship | 跨 Shell 提示符 | Ubuntu `universe` |
 | fzf | 模糊搜索 | Ubuntu `universe` |
@@ -86,7 +95,7 @@ bash install.sh
 | zsh-syntax-highlighting | 命令语法高亮 | Ubuntu `universe` |
 | zsh-completions | Tab 补全增强 | [zsh-users/zsh-completions](https://github.com/zsh-users/zsh-completions) |
 
-字体版本固定在 `install.sh` 顶部的 `MAPLE_VERSION`（当前 `v7.9`，与 macOS 端 cask 对齐），升级时只需改这一处。
+字体版本固定在 `install.sh` 顶部的 `MAPLE_VERSION`（当前 `v7.9`），升级时只需改这一处。
 
 Yazi 官方 APT 源提供 `amd64` 和 `arm64` 稳定版软件包。脚本不会使用已废弃的 `apt-key`，也不会安装 Rust/Cargo 编译环境。
 
@@ -117,7 +126,7 @@ echo 'deb [signed-by=/usr/share/keyrings/yazi-keyring.gpg] https://yazi-rs.githu
 ```bash
 sudo apt-get update
 sudo apt-get install -y \
-  file fontconfig unzip zsh ghostty starship fzf zoxide eza bat yazi \
+  file fontconfig libglib2.0-bin unzip zsh ghostty starship fzf zoxide eza bat yazi \
   zsh-autosuggestions zsh-syntax-highlighting
 
 mkdir -p ~/.local/share
@@ -128,20 +137,20 @@ git clone --depth 1 \
 
 如果 `~/.local/share/zsh-completions` 已存在且包含 `src` 目录，请跳过 `git clone`。
 
-### 2. 安装 Maple Mono NF 字体
+### 2. 安装 Maple Mono NF CN 字体
 
 ```bash
-FONT_DIR="$HOME/.local/share/fonts/maple-mono-nf"
+FONT_DIR="$HOME/.local/share/fonts/maple-mono-nf-cn"
 mkdir -p "$FONT_DIR" /tmp/maple-font && cd /tmp/maple-font
 
-curl -fsSLO https://github.com/subframe7536/maple-font/releases/download/v7.9/MapleMono-NF.zip
-curl -fsSLO https://github.com/subframe7536/maple-font/releases/download/v7.9/MapleMono-NF.sha256
+curl -fsSLO https://github.com/subframe7536/maple-font/releases/download/v7.9/MapleMono-NF-CN.zip
+curl -fsSLO https://github.com/subframe7536/maple-font/releases/download/v7.9/MapleMono-NF-CN.sha256
 
 # 官方 .sha256 文件里只有裸哈希，没有文件名，因此不能用 sha256sum -c
-[ "$(tr -d '[:space:]' < MapleMono-NF.sha256)" = "$(sha256sum MapleMono-NF.zip | cut -d' ' -f1)" ] \
+[ "$(tr -d '[:space:]' < MapleMono-NF-CN.sha256)" = "$(sha256sum MapleMono-NF-CN.zip | cut -d' ' -f1)" ] \
   && echo "校验通过" || echo "校验失败，请勿安装"
 
-unzip -oq MapleMono-NF.zip -d extracted
+unzip -oq MapleMono-NF-CN.zip -d extracted
 find extracted -name '*.ttf' -exec cp -f {} "$FONT_DIR/" \;
 printf 'v7.9\n' > "$FONT_DIR/.version"
 fc-cache -f "$FONT_DIR"
@@ -150,6 +159,14 @@ fc-cache -f "$FONT_DIR"
 ### 3. 备份并部署配置
 
 以下命令在本 README 所在目录（`linux/terminal/`）执行。
+
+先安装中文字体匹配规则并自动设置 Ptyxis 字体。此步骤也适用于已经安装 CN 字体、只需要补上修复的机器：
+
+```bash
+bash configure-fonts.sh
+```
+
+已有字体规则和 Ptyxis 字体设置会先备份；未安装 Ptyxis 时跳过该应用的设置。字体匹配或 GSettings 保存失败时会报错，避免把未生效的设置当作成功。
 
 ```bash
 BACKUP_DIR="$HOME/.config-backup/$(date +%Y%m%d_%H%M%S)"
@@ -221,11 +238,14 @@ sudo chsh -s "$(command -v zsh)" "$USER"
 
 ```bash
 command -v zsh ghostty starship fzf zoxide eza batcat yazi
-fc-list | grep -i "Maple Mono NF" | head -3
+fc-list | grep -i "Maple Mono NF CN" | head -3
+fc-match 'Maple Mono NF CN:spacing=100:lang=zh-cn'
+gsettings get org.gnome.Ptyxis font-name
+gsettings get org.gnome.Ptyxis use-system-font
 getent passwd "$USER" | cut -d: -f7
 ```
 
-预期最后一条输出 `/usr/bin/zsh`。
+字体匹配预期为 Maple Mono NF CN；Ptyxis 预期为 `'Maple Mono NF CN Regular 10'` 和 `false`；最后一条预期输出 `/usr/bin/zsh`。
 
 检查 Ghostty 配置与插件：
 
@@ -246,6 +266,8 @@ zsh -lic 'alias ls; alias cat; whence -w y'
 - `universe` 和 Yazi APT 源不会重复添加
 - 已存在且有效的 zsh-completions 会跳过
 - 字体目录中记录的版本与 `MAPLE_VERSION` 相同时跳过下载
+- 每次都会安装或核对 Fontconfig 规则、刷新字体缓存，并验证中文和英文环境的字体匹配
+- Ptyxis 字体已正确设置时跳过修改；需要修改时先保存旧值
 - Ghostty 和 Starship 配置内容相同时不会重复复制或备份
 - `~/.zshrc` 中存在 Linux 配置 marker 时不会再次追加
 - 默认 Shell 已是 zsh 时不会重复切换
@@ -259,6 +281,8 @@ zsh -lic 'alias ls; alias cat; whence -w y'
 ```text
 ~/.config-backup/<时间戳>/ghostty-config
 ~/.config-backup/<时间戳>/starship.toml
+~/.config-backup/<时间戳>/maple-mono-nf-cn-ghostty.conf
+~/.config-backup/<时间戳>/restore-ptyxis-font.sh
 ```
 
 恢复命令：
@@ -268,6 +292,14 @@ rm -f ~/.config/ghostty/config ~/.config/starship.toml
 cp -a ~/.config-backup/<时间戳>/ghostty-config ~/.config/ghostty/config
 cp -a ~/.config-backup/<时间戳>/starship.toml ~/.config/starship.toml
 ```
+
+如果备份目录包含 `maple-mono-nf-cn-ghostty.conf`，可以将其恢复到 `~/.config/fontconfig/conf.d/99-maple-mono-nf-cn-ghostty.conf`。恢复原来的 Ptyxis 字体：
+
+```bash
+bash ~/.config-backup/<时间戳>/restore-ptyxis-font.sh
+```
+
+只会为确实被替换的配置创建对应备份文件。
 
 zsh 配置不会覆盖原文件，而是写在以下标记之间：
 
@@ -282,6 +314,18 @@ zsh 配置不会覆盖原文件，而是写在以下标记之间：
 
 ## 常见问题
 
+### Ghostty 中文字形与 Maple CN 不同
+
+Ubuntu 的 `48-spacing.conf` 会根据 Ghostty 的等宽请求加入 `monospace`；中文环境的 `69-language-selector-zh-cn.conf` 随后将 DejaVu 和 Noto 插到指定字体前面。兼容规则只处理明确指定 `Maple Mono NF CN` 的请求，去掉这些通用别名并使用字体原生的双宽分类，不修改系统默认字体。
+
+已有安装可以运行 `bash configure-fonts.sh` 补上规则，然后完全退出 Ghostty 的旧进程再重新打开。用实际的中文语言环境验证：
+
+```bash
+LANG=zh_CN.UTF-8 LC_ALL=zh_CN.UTF-8 ghostty +show-face --string='ABC文档下载'
+```
+
+这些字符都应匹配 `Maple Mono NF CN`。仅在英文语言环境中测试可能无法发现上述问题。
+
 ### 窗口没有毛玻璃模糊效果
 
 `background-blur` 只在支持客户端模糊的桌面环境下生效，例如 KDE Plasma。Ubuntu 默认的 GNOME 不支持，这是桌面环境的限制而不是配置问题；窗口透明度仍然正常生效。如需模糊效果可改用 KDE Plasma，或删除 `ghostty/config` 中的 `background-blur` 一行。
@@ -291,7 +335,7 @@ zsh 配置不会覆盖原文件，而是写在以下标记之间：
 确认字体已安装并被 fontconfig 识别：
 
 ```bash
-fc-list | grep -i "Maple Mono NF" | head -3
+fc-list | grep -i "Maple Mono NF CN" | head -3
 ```
 
 如果输出为空，重新执行安装脚本或按「手动安装」第 2 步安装字体，然后刷新缓存并重启 Ghostty：

@@ -2,12 +2,12 @@
 # 字体
 # ==============================================================================
 # font-family: 终端字体，需要 Nerd Font 版本才能显示图标
-#             Maple Mono NF 由 install.sh 从官方 Release 安装到 ~/.local/share/fonts
+#             Maple Mono NF CN 含中文和 Nerd Font 图标，由 install.sh 安装
 # font-size: 字号
 # adjust-cell-height: 行间距，0 为默认紧凑，可调大（如 10%、20%）增加行距
 # 注: mac 配置中的 font-thicken（字体加粗渲染）为 macOS 专属，Linux 上无效，故未启用
-font-family = "Maple Mono NF"
-font-size = 13
+font-family = "Maple Mono NF CN"
+font-size = 10
 adjust-cell-height = 0
 
 # ==============================================================================
