@@ -54,7 +54,7 @@ bash install.sh
 2. 启用 Ubuntu `universe` 源
 3. 添加使用独立 keyring 和 `signed-by` 的 Yazi 官方稳定版 APT 源
 4. 安装 zsh、Starship、fzf、zoxide、eza、bat、Yazi 和两个 zsh 插件
-5. 从官方仓库安装 zsh-completions 到 `~/.local/share/zsh-completions`
+5. 首次克隆 zsh-completions 到 `~/.local/share/zsh-completions`，再次运行时执行 `git pull --ff-only`
 6. 备份并安装 Starship 配置
 7. 将 Linux zsh 配置追加到 `~/.zshrc`
 8. 将当前 WSL 用户的默认 Shell 切换为 zsh
@@ -119,12 +119,16 @@ sudo apt-get install -y \
   zsh-autosuggestions zsh-syntax-highlighting
 
 mkdir -p ~/.local/share
-git clone --depth 1 \
-  https://github.com/zsh-users/zsh-completions.git \
-  ~/.local/share/zsh-completions
+if [ -d ~/.local/share/zsh-completions/.git ] && [ -d ~/.local/share/zsh-completions/src ]; then
+  git -C ~/.local/share/zsh-completions pull --ff-only
+else
+  git clone --depth 1 \
+    https://github.com/zsh-users/zsh-completions.git \
+    ~/.local/share/zsh-completions
+fi
 ```
 
-如果 `~/.local/share/zsh-completions` 已存在且包含 `src` 目录，请跳过 `git clone`。
+已有 zsh-completions 仓库会快进更新；若本地改动与上游冲突，更新报错并保留本地内容。
 
 ### 2. 备份并部署配置
 
@@ -217,7 +221,7 @@ zsh -lic 'alias ls; alias cat; whence -w y'
 安装脚本可以重复运行：
 
 - `universe` 和 Yazi APT 源不会重复添加
-- 已存在且有效的 zsh-completions 会跳过
+- 每次对已有 zsh-completions 执行 `git pull --ff-only`
 - Starship 配置内容相同时不会重复复制或备份
 - `~/.zshrc` 中存在 Linux 配置 marker 时不会再次追加
 - 默认 Shell 已是 zsh 时不会重复切换

@@ -152,11 +152,12 @@ sudo apt-get install -y \
   zsh-syntax-highlighting
 
 # ==============================================================================
-# 安装 zsh-completions
+# 安装或更新 zsh-completions
 # ==============================================================================
-echo "==> 安装 zsh-completions..."
+echo "==> 安装或更新 zsh-completions..."
 if [ -d "$ZSH_COMPLETIONS_DIR/.git" ] && [ -d "$ZSH_COMPLETIONS_DIR/src" ]; then
-  echo "    zsh-completions 已安装，跳过。"
+  # 仅允许快进更新，不覆盖本地修改或重写已有提交。
+  git -C "$ZSH_COMPLETIONS_DIR" pull --ff-only
 elif [ -e "$ZSH_COMPLETIONS_DIR" ] || [ -L "$ZSH_COMPLETIONS_DIR" ]; then
   echo "错误: $ZSH_COMPLETIONS_DIR 已存在，但不是有效的 zsh-completions 仓库。"
   echo "请先检查或移走该路径，再重新运行本脚本。"

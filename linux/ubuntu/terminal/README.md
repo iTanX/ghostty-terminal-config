@@ -65,7 +65,7 @@ bash install.sh
 2. 启用 Ubuntu `universe` 源
 3. 添加使用独立 keyring 和 `signed-by` 的 Yazi 官方稳定版 APT 源
 4. 安装 Ghostty、zsh、Starship、fzf、zoxide、eza、bat、Yazi 和两个 zsh 插件
-5. 从官方仓库安装 zsh-completions 到 `~/.local/share/zsh-completions`
+5. 首次克隆 zsh-completions 到 `~/.local/share/zsh-completions`，再次运行时执行 `git pull --ff-only`
 6. 从官方 GitHub Release 下载 Maple Mono NF CN 字体并校验完整性，安装到 `~/.local/share/fonts/maple-mono-nf-cn`
 7. 安装 Fontconfig 兼容规则，刷新缓存并验证中英文环境下均匹配 Maple CN
 8. 将 Ptyxis 的字体设为 `Maple Mono NF CN Regular 10`，并关闭“使用系统字体”
@@ -130,12 +130,16 @@ sudo apt-get install -y \
   zsh-autosuggestions zsh-syntax-highlighting
 
 mkdir -p ~/.local/share
-git clone --depth 1 \
-  https://github.com/zsh-users/zsh-completions.git \
-  ~/.local/share/zsh-completions
+if [ -d ~/.local/share/zsh-completions/.git ] && [ -d ~/.local/share/zsh-completions/src ]; then
+  git -C ~/.local/share/zsh-completions pull --ff-only
+else
+  git clone --depth 1 \
+    https://github.com/zsh-users/zsh-completions.git \
+    ~/.local/share/zsh-completions
+fi
 ```
 
-如果 `~/.local/share/zsh-completions` 已存在且包含 `src` 目录，请跳过 `git clone`。
+已有 zsh-completions 仓库会快进更新；若本地改动与上游冲突，更新报错并保留本地内容。
 
 ### 2. 安装 Maple Mono NF CN 字体
 
@@ -264,7 +268,7 @@ zsh -lic 'alias ls; alias cat; whence -w y'
 安装脚本可以重复运行：
 
 - `universe` 和 Yazi APT 源不会重复添加
-- 已存在且有效的 zsh-completions 会跳过
+- 每次对已有 zsh-completions 执行 `git pull --ff-only`
 - 字体目录中记录的版本与 `MAPLE_VERSION` 相同时跳过下载
 - 每次都会安装或核对 Fontconfig 规则、刷新字体缓存，并验证中文和英文环境的字体匹配
 - Ptyxis 字体已正确设置时跳过修改；需要修改时先保存旧值
