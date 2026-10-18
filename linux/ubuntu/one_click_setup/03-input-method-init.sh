@@ -23,10 +23,10 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 # ===== 步骤 1：安装软件包 =====
 echo "[1/5] 安装 Fcitx5、Rime 及依赖..."
 sudo apt update
-# --no-install-recommends：避免拉入 fcitx5-chinese-addons 等不需要的推荐包
+# 按 APT 默认策略安装推荐依赖，包括 GTK/Qt 输入法前端。
 # fcitx5-rime 是 Rime 引擎适配器，必需
 # librime-plugin-lua 提供 Lua 支持，雾凇部分功能依赖
-sudo apt install -y --no-install-recommends \
+sudo apt install -y \
   fcitx5 fcitx5-rime fcitx5-config-qt git librime-plugin-lua \
   curl unzip python3 libglib2.0-bin
 
@@ -171,8 +171,8 @@ cat <<'MSG'
    取消勾选“仅显示当前语言”，搜索并添加 Rime，调整顺序后应用。
 
 3. 触发部署（二选一）：
-     fcitx5-remote -r
-   或在托盘图标右键菜单点击“重新部署”。
+     busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 SetConfig sv fcitx://config/addon/rime/deploy s ''
+   或在托盘图标右键菜单点击“重新部署”。请等待输入法的部署完成提示。
 
 4. 按 Ctrl+空格 切换到 Rime，输入拼音验证。
    输入状态下按 F4 可查看当前方案是否为雾凇拼音。
