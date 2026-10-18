@@ -2,7 +2,7 @@
 
 适用于 **Ubuntu 26.04 LTS 桌面版**，提供 Ghostty 终端模拟器、Starship 彩虹条提示符、zsh 插件、模糊搜索、智能目录跳转、文件管理器和常用命令别名。
 
-> WSL 用户请改用 [`wsl/`](../../wsl/) 目录。WSL 内没有图形界面，不需要也无法安装 Ghostty，那边只配置 Shell 工具。
+> WSL 用户请改用 [`wsl/`](../../../wsl/) 目录。WSL 内没有图形界面，不需要也无法安装 Ghostty，那边只配置 Shell 工具。
 
 本目录与仓库中的 macOS 配置相互独立，各自安装对应平台的终端模拟器与字体。
 
@@ -158,7 +158,7 @@ fc-cache -f "$FONT_DIR"
 
 ### 3. 备份并部署配置
 
-以下命令在本 README 所在目录（`linux/terminal/`）执行。
+以下命令在本 README 所在目录（`linux/ubuntu/terminal/`）执行。
 
 先安装中文字体匹配规则并自动设置 Ptyxis 字体。此步骤也适用于已经安装 CN 字体、只需要补上修复的机器：
 
