@@ -45,7 +45,7 @@
 
 Linux 版使用含中文的 NF CN 字体，字号为 10。主题、内边距、透明度、光标和交互设置与 macOS 版保持一致。
 
-另外 `background-blur`（毛玻璃模糊）只在部分桌面环境下生效，例如 KDE Plasma。Ubuntu 默认的 GNOME 不支持客户端模糊，此时窗口透明度仍然生效，只是没有模糊效果。
+另外 `background-blur`（毛玻璃模糊）只在部分桌面环境下生效，例如 KDE Plasma。Linux Mint 默认的 Cinnamon 不支持客户端模糊，此时窗口透明度仍然生效，只是没有模糊效果。
 
 ## 一键安装
 
@@ -324,7 +324,7 @@ zsh 配置不会覆盖原文件，而是写在以下标记之间：
 
 ### 窗口没有毛玻璃模糊效果
 
-`background-blur` 只在支持客户端模糊的桌面环境下生效，例如 KDE Plasma。Ubuntu 默认的 GNOME 不支持，这是桌面环境的限制而不是配置问题；窗口透明度仍然正常生效。如需模糊效果可改用 KDE Plasma，或删除 `ghostty/config` 中的 `background-blur` 一行。
+`background-blur` 只在支持客户端模糊的桌面环境下生效，例如 KDE Plasma。Linux Mint 默认的 Cinnamon 不支持，这是桌面环境的限制而不是配置问题；窗口透明度仍然正常生效。如需模糊效果可改用 KDE Plasma，或删除 `ghostty/config` 中的 `background-blur` 一行。
 
 ### 图标显示为方框
 

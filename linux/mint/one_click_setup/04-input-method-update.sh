@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================
 # 一键更新雾凇拼音并重新部署
-# 用法：bash update-rime-ice.sh
+# 用法：bash 04-input-method-update.sh
 # ============================================================
 
 set -euo pipefail
@@ -29,18 +29,18 @@ fi
 echo "正在更新雾凇拼音..."
 git -C "$RIME_DIR" pull --ff-only
 
-# ===== 清理 build 缓存，确保重新构建 =====
-if [ -d "$RIME_DIR/build" ]; then
-  echo "清理 build 缓存..."
-  rm -rf "$RIME_DIR/build"
-fi
-
 # ===== 触发重新部署 =====
+# 调用 Rime 的部署入口进行完整检查，不手动删除 build；-r 只重载 Fcitx 全局配置。
 if pgrep -x fcitx5 >/dev/null; then
-  echo "重新部署 Rime..."
-  fcitx5-remote -r
-  echo "更新完成。"
+  echo "请求重新部署 Rime..."
+  if ! busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 \
+      SetConfig sv fcitx://config/addon/rime/deploy s ''; then
+    echo "错误：请求 Rime 部署失败，请在当前桌面用户的终端重试，或通过托盘菜单重新部署。" >&2
+    exit 1
+  fi
+  # 部署在后台进行，D-Bus 调用成功只表示请求已受理。
+  echo "雾凇拼音已更新，已请求 Rime 重新部署，请等待输入法的完成提示。"
 else
-  echo "警告：Fcitx5 未运行，请启动 Fcitx5 后手动执行："
-  echo "  fcitx5-remote -r"
+  echo "雾凇拼音已更新。Fcitx5 未运行，请启动后通过托盘菜单重新部署，或执行："
+  echo "  busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 SetConfig sv fcitx://config/addon/rime/deploy s ''"
 fi
