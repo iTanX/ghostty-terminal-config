@@ -15,6 +15,8 @@ fi
 
 RIME_DIR="$HOME/.local/share/fcitx5/rime"
 ENV_FILE="$HOME/.config/environment.d/fcitx5.conf"
+AUTOSTART_SOURCE="/usr/share/applications/org.fcitx.Fcitx5.desktop"
+AUTOSTART_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/autostart/org.fcitx.Fcitx5.desktop"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
@@ -28,10 +30,22 @@ sudo apt install -y --no-install-recommends \
   fcitx5 fcitx5-rime fcitx5-config-qt git librime-plugin-lua \
   curl unzip python3 libglib2.0-bin
 
-# ===== 步骤 2：设置 Fcitx5 为默认输入法框架 =====
-echo "[2/5] 设置 Fcitx5 为默认输入法框架..."
+# ===== 步骤 2：设置默认输入法框架及登录自启动 =====
+echo "[2/5] 设置 Fcitx5 为默认输入法框架及登录自启动..."
 # 写入 im-config 的用户级配置，注销重登后生效
 im-config -n fcitx5
+
+# 按 Fcitx 官方方式部署 XDG 自启动项，使用同一文件名，重复运行不会新增条目。
+if [ ! -f "$AUTOSTART_SOURCE" ]; then
+  echo "错误：未找到 Fcitx5 启动文件：$AUTOSTART_SOURCE" >&2
+  exit 1
+fi
+if cmp -s "$AUTOSTART_SOURCE" "$AUTOSTART_FILE"; then
+  echo "Fcitx5 登录自启动已配置，跳过写入。"
+else
+  install -Dm644 -T "$AUTOSTART_SOURCE" "$AUTOSTART_FILE"
+  echo "已设置 Fcitx5 登录自启动：$AUTOSTART_FILE"
+fi
 
 # ===== 步骤 3：配置环境变量 =====
 echo "[3/5] 写入环境变量配置..."
@@ -149,6 +163,7 @@ cat <<'MSG'
 脚本执行完成。剩余步骤需手动操作：
 
 1. 注销并重新登录（使 im-config、环境变量和新装的 Input Method Panel 生效）。
+   Fcitx5 已配置为登录桌面后自动启动。
    GNOME 下的 Input Method Panel 已自动安装并设置为启用，无需手动安装扩展。
 
 2. 运行以下命令打开配置工具：
