@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # ==============================================================================
-# Ubuntu 26.04 Shell Config 一键安装脚本
+# Linux Mint 22.3 Shell Config 一键安装及更新脚本
 # ==============================================================================
 # 用法（在脚本所在目录执行）:
 #   bash install.sh
 #
 # 说明:
-#   1. 启用 universe 并安装终端工具、Ghostty 和 zsh 插件
-#   2. 添加 Yazi 官方 APT 源并安装 Yazi
+#   1. 添加 Ghostty 社区 PPA 和 Yazi 官方 APT 源，安装或更新终端工具与 zsh 插件
+#   2. 通过上游安装器更新 Starship 和 fzf，通过 Git 更新 zsh-completions
 #   3. 安装 Maple Mono NF CN 字体到 ~/.local/share/fonts/maple-mono-nf-cn
 #   4. 备份已有 Ghostty 和 Starship 配置到 ~/.config-backup/YYYYMMDD_HHMMSS/
 #   5. 安装 Ghostty、Starship 和 zsh 配置，并将默认 Shell 切换为 zsh
@@ -50,7 +50,7 @@ MAPLE_SHA_NAME="MapleMono-NF-CN.sha256"
 # 用户级字体目录，无需 sudo，fontconfig 会自动扫描
 FONT_DIR="$HOME/.local/share/fonts/maple-mono-nf-cn"
 
-# 清理下载 Yazi 密钥和字体包时使用的临时目录
+# 下载文件与 fzf 临时仓库均放在此目录，成功或失败退出时一并清理。
 cleanup() {
   rm -rf "$TMP_DIR"
 }
@@ -69,10 +69,10 @@ if [ ! -r /etc/os-release ]; then
   exit 1
 fi
 
-# os-release 是 Ubuntu 提供的系统版本信息
+# Mint 22.3 使用 Ubuntu Noble 基础源，不能用 Mint 的 Zena 代号添加 Ubuntu 源。
 . /etc/os-release
-if [ "${ID:-}" != "ubuntu" ] || [ "${VERSION_ID:-}" != "26.04" ]; then
-  echo "错误: 本脚本仅支持 Ubuntu 26.04 LTS（Ghostty 官方软件包自 26.04 起提供）。"
+if [ "${ID:-}" != "linuxmint" ] || [ "${VERSION_ID:-}" != "22.3" ] || [ "${UBUNTU_CODENAME:-}" != "noble" ]; then
+  echo "错误: 本脚本仅支持 Linux Mint 22.3（Ubuntu Noble 基础）。"
   echo "当前系统: ${PRETTY_NAME:-未知}"
   exit 1
 fi
@@ -92,12 +92,12 @@ fi
 # ==============================================================================
 echo ""
 echo "======================================"
-echo " Ubuntu 26.04 Shell Config 安装脚本"
+echo " Linux Mint 22.3 Shell Config 安装及更新脚本"
 echo "======================================"
 echo ""
 echo "本脚本将执行以下操作:"
-echo "  1. 启用 universe 并通过 APT 安装终端工具、Ghostty 和 zsh 插件"
-echo "  2. 添加 Yazi 官方签名 APT 源"
+echo "  1. 添加 Ghostty 社区 PPA 和 Yazi 官方签名 APT 源，安装或更新 APT 软件包"
+echo "  2. 更新 Starship、fzf 和 zsh-completions"
 echo "  3. 从官方 GitHub Release 安装 Maple Mono NF CN 字体"
 echo "  4. 备份并安装 Ghostty、Starship 和 zsh 配置"
 echo "  5. 将当前用户的默认 Shell 切换为 zsh"
@@ -117,10 +117,11 @@ echo ""
 # ==============================================================================
 echo "==> 安装 APT 基础依赖..."
 sudo apt-get update
-sudo apt-get install -y software-properties-common ca-certificates curl gnupg git
+sudo apt-get install -y mintsources ca-certificates curl gnupg git
 
-# add-apt-repository 可重复执行；--no-update 避免在添加 Yazi 源前重复刷新索引
-sudo add-apt-repository -y --no-update universe
+# Mint 的命令自动使用 Ubuntu 基础代号，可重复执行；不支持 Ubuntu 的 --no-update 参数。
+echo "==> 配置 Ghostty 社区 PPA..."
+sudo add-apt-repository -y ppa:mkasberg/ghostty-ubuntu
 
 # ==============================================================================
 # 添加 Yazi 官方 APT 源
@@ -147,16 +148,15 @@ else
   echo "    ✓ $YAZI_SOURCE_LIST"
 fi
 
-echo "==> 安装终端工具和 zsh 插件..."
+echo "==> 安装或更新终端工具和 zsh 插件..."
 sudo apt-get update
+# install 同时将已安装的指定包升级到当前源中的候选版本。
 sudo apt-get install -y \
   file \
   fontconfig \
   unzip \
   zsh \
   ghostty \
-  starship \
-  fzf \
   zoxide \
   eza \
   bat \
@@ -165,11 +165,31 @@ sudo apt-get install -y \
   zsh-syntax-highlighting
 
 # ==============================================================================
-# 安装 zsh-completions
+# 安装或更新 Starship 和 fzf
 # ==============================================================================
-echo "==> 安装 zsh-completions..."
+# 先在临时目录完成下载，再安装到 /usr/local/bin，失败时保留原有可执行文件。
+echo "==> 安装或更新 Starship..."
+mkdir -p "$TMP_DIR/starship-bin"
+curl -fsSL https://starship.rs/install.sh -o "$TMP_DIR/starship-install.sh"
+TMPDIR="$TMP_DIR" sh "$TMP_DIR/starship-install.sh" --yes --bin-dir "$TMP_DIR/starship-bin"
+sudo install -Dm0755 "$TMP_DIR/starship-bin/starship" /usr/local/bin/starship
+
+# --bin 只获取可执行文件，不生成 ~/.fzf 或重复修改 Shell 初始化配置。
+echo "==> 安装或更新 fzf..."
+git clone --depth 1 https://github.com/junegunn/fzf.git "$TMP_DIR/fzf"
+bash "$TMP_DIR/fzf/install" --bin
+# 上游安装器可能链接到已安装的同版本文件，避免向该文件自身复制。
+if [ ! "$TMP_DIR/fzf/bin/fzf" -ef /usr/local/bin/fzf ]; then
+  sudo install -Dm0755 "$TMP_DIR/fzf/bin/fzf" /usr/local/bin/fzf
+fi
+
+# ==============================================================================
+# 安装或更新 zsh-completions
+# ==============================================================================
+echo "==> 安装或更新 zsh-completions..."
 if [ -d "$ZSH_COMPLETIONS_DIR/.git" ] && [ -d "$ZSH_COMPLETIONS_DIR/src" ]; then
-  echo "    zsh-completions 已安装，跳过。"
+  # 仅允许快进更新，不覆盖本地修改或重写已有提交。
+  git -C "$ZSH_COMPLETIONS_DIR" pull --ff-only
 elif [ -e "$ZSH_COMPLETIONS_DIR" ] || [ -L "$ZSH_COMPLETIONS_DIR" ]; then
   echo "错误: $ZSH_COMPLETIONS_DIR 已存在，但不是有效的 zsh-completions 仓库。"
   echo "请先检查或移走该路径，再重新运行本脚本。"
@@ -272,7 +292,7 @@ else
   {
     echo ""
     echo "$ZSH_MARKER_START"
-    echo "# 以下内容由 Ubuntu shell 配置安装脚本自动追加"
+    echo "# 以下内容由 Linux Mint shell 配置安装脚本自动追加"
     echo "# 删除方法: 移除从 >>> 到 <<< 之间的所有内容"
     cat "$ZSH_SOURCE"
     echo "$ZSH_MARKER_END"

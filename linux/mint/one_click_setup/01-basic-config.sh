@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Linux 基础配置：安装 Ghostty、Maple Mono NF CN 字体与 ZSH 配置。
 # Ghostty 默认使用 Maple Mono NF CN 字体，10 号。
-# 适用于 Ubuntu 26.04 LTS 桌面版（Ghostty 官方软件包自 26.04 起提供）。
+# 适用于 Linux Mint 22.3；重复运行会更新终端工具和 zsh-completions。
 # 首次可执行：chmod +x 01-basic-config.sh；随后以普通用户运行 ./01-basic-config.sh。
 # 不要使用 sudo 执行整个脚本。
 

@@ -1,6 +1,6 @@
-# Ubuntu 26.04 Desktop Shell Config
+# Linux Mint 22.3 Desktop Shell Config
 
-适用于 **Ubuntu 26.04 LTS 桌面版**，提供 Ghostty 终端模拟器、Starship 彩虹条提示符、zsh 插件、模糊搜索、智能目录跳转、文件管理器和常用命令别名。
+适用于 **Linux Mint 22.3（Ubuntu 24.04 Noble 基础）**，提供 Ghostty 终端模拟器、Starship 彩虹条提示符、zsh 插件、模糊搜索、智能目录跳转、文件管理器和常用命令别名。
 
 > WSL 用户请改用 [`wsl/`](../../../wsl/) 目录。WSL 内没有图形界面，不需要也无法安装 Ghostty，那边只配置 Shell 工具。
 
@@ -22,16 +22,16 @@
 |------|------|---------|
 | `ghostty/config` | Ghostty 终端配置（字体、主题、窗口、光标） | `~/.config/ghostty/config` |
 | `starship/starship.toml` | Starship 彩虹条提示符配置 | `~/.config/starship.toml` |
-| `zsh/.zshrc` | Ubuntu 版 zsh 配置 | 追加到 `~/.zshrc` 的受控标记块内 |
-| `install.sh` | Ubuntu 26.04 一键安装脚本 | 可在任意目录运行（自动定位配置） |
+| `zsh/.zshrc` | Linux Mint 版 zsh 配置 | 追加到 `~/.zshrc` 的受控标记块内 |
+| `install.sh` | Linux Mint 22.3 一键安装及更新脚本 | 可在任意目录运行（自动定位配置） |
 
 配置目录遵循 `XDG_CONFIG_HOME`，未设置时使用 `~/.config`。Ghostty 的默认字重为 Regular；`eza` 等程序仍可为目录名请求粗体，Starship 彩虹条路径保持原有常规样式。
 
 ## 前置条件
 
-- Ubuntu 26.04 LTS 桌面版（Ghostty 官方软件包自 26.04 起提供）
+- Linux Mint 22.3，`/etc/os-release` 中的 `UBUNTU_CODENAME` 为 `noble`
 - 当前用户具有 `sudo` 权限
-- 可以访问 Ubuntu 软件源、GitHub 和 Yazi 官方软件源
+- 可以访问 Mint / Ubuntu 软件源、Launchpad PPA、GitHub、Starship 官网和 Yazi 官方软件源
 
 ## 与 macOS 版 Ghostty 配置的差异
 
@@ -57,11 +57,11 @@ bash install.sh
 
 脚本会自动执行：
 
-1. 检查当前系统是否为 Ubuntu 26.04 LTS
-2. 启用 Ubuntu `universe` 源
+1. 检查当前系统是否为 Linux Mint 22.3，Ubuntu 基础代号是否为 `noble`
+2. 添加 Ghostty 社区 PPA，使用 Mint 自带的 Ubuntu 基础源
 3. 添加使用独立 keyring 和 `signed-by` 的 Yazi 官方稳定版 APT 源
-4. 安装 Ghostty、zsh、Starship、fzf、zoxide、eza、bat、Yazi 和两个 zsh 插件
-5. 从官方仓库安装 zsh-completions 到 `~/.local/share/zsh-completions`
+4. 通过 APT 安装或更新 Ghostty、zsh、zoxide、eza、bat、Yazi 和两个 zsh 插件；通过上游安装器更新 Starship、fzf 到 `/usr/local/bin`
+5. 首次克隆 zsh-completions 到 `~/.local/share/zsh-completions`，再次运行时执行 `git pull --ff-only`
 6. 从官方 GitHub Release 下载 Maple Mono NF CN 字体并校验完整性，安装到 `~/.local/share/fonts/maple-mono-nf-cn`
 7. 刷新字体缓存
 8. 备份并安装 Ghostty（CN 字体、10 号）和 Starship 配置
@@ -76,11 +76,11 @@ bash install.sh
 
 | 工具 | 用途 | 来源 |
 |------|------|------|
-| Ghostty | GPU 加速终端模拟器 | Ubuntu 官方软件源（26.04 起） |
+| Ghostty | GPU 加速终端模拟器 | [mkasberg/ghostty-ubuntu 社区 PPA](https://github.com/mkasberg/ghostty-ubuntu)（Noble 当前支持到 1.3.1） |
 | Maple Mono NF CN | 终端字体（含中文字形和 Nerd Font 图标） | [Maple Font Release](https://github.com/subframe7536/maple-font/releases)，脚本下载并校验 sha256 |
 | zsh | Shell | Ubuntu APT |
-| Starship | 跨 Shell 提示符 | Ubuntu `universe` |
-| fzf | 模糊搜索 | Ubuntu `universe` |
+| Starship | 跨 Shell 提示符 | [官方安装器](https://starship.rs/guide/)，安装到 `/usr/local/bin/starship` |
+| fzf | 模糊搜索 | [上游安装器](https://github.com/junegunn/fzf#using-git)，安装到 `/usr/local/bin/fzf` |
 | zoxide | 智能目录跳转 | Ubuntu `universe` |
 | eza | 替代 ls，支持彩色图标 | Ubuntu `universe` |
 | bat | 替代 cat，Ubuntu 命令名为 `batcat` | Ubuntu `universe` |
@@ -93,6 +93,8 @@ bash install.sh
 
 Yazi 官方 APT 源提供 `amd64` 和 `arm64` 稳定版软件包。脚本不会使用已废弃的 `apt-key`，也不会安装 Rust/Cargo 编译环境。
 
+Starship 和 fzf 的安装文件放在临时目录，正常完成或失败退出时都会清理。fzf 使用 `--bin`，只获取可执行文件，不创建 `~/.fzf`，也不改写 Shell 配置；现有的 `source <(fzf --zsh)` 直接调用 `/usr/local/bin/fzf`。请确保 `/usr/local/bin` 在 `PATH` 中优先于 `/usr/bin`，避免调用系统仓库中的旧 fzf。
+
 ## 手动安装
 
 如果不运行安装脚本，可以按以下步骤手动部署。
@@ -101,8 +103,8 @@ Yazi 官方 APT 源提供 `amd64` 和 `arm64` 稳定版软件包。脚本不会�
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y software-properties-common ca-certificates curl gnupg git
-sudo add-apt-repository -y universe
+sudo apt-get install -y mintsources ca-certificates curl gnupg git
+sudo add-apt-repository -y ppa:mkasberg/ghostty-ubuntu
 ```
 
 添加 Yazi 官方稳定版 APT 源。若 `/etc/apt/sources.list.d/yazi.list` 已存在，请先确认其内容；下面的 `tee` 命令会覆盖该文件：
@@ -120,16 +122,42 @@ echo 'deb [signed-by=/usr/share/keyrings/yazi-keyring.gpg] https://yazi-rs.githu
 ```bash
 sudo apt-get update
 sudo apt-get install -y \
-  file fontconfig unzip zsh ghostty starship fzf zoxide eza bat yazi \
+  file fontconfig unzip zsh ghostty zoxide eza bat yazi \
   zsh-autosuggestions zsh-syntax-highlighting
 
 mkdir -p ~/.local/share
-git clone --depth 1 \
-  https://github.com/zsh-users/zsh-completions.git \
-  ~/.local/share/zsh-completions
+if [ -d ~/.local/share/zsh-completions/.git ] && [ -d ~/.local/share/zsh-completions/src ]; then
+  git -C ~/.local/share/zsh-completions pull --ff-only
+else
+  git clone --depth 1 \
+    https://github.com/zsh-users/zsh-completions.git \
+    ~/.local/share/zsh-completions
+fi
 ```
 
-如果 `~/.local/share/zsh-completions` 已存在且包含 `src` 目录，请跳过 `git clone`。
+已有 zsh-completions 仓库会快进更新；若本地改动与上游冲突，更新报错并保留本地内容。
+
+通过上游安装器安装或更新 Starship 和 fzf，下载目录用完即删：
+
+```bash
+(
+  set -euo pipefail
+  INSTALL_TMP_DIR="$(mktemp -d)"
+  trap 'rm -rf "$INSTALL_TMP_DIR"' EXIT
+
+  mkdir -p "$INSTALL_TMP_DIR/starship-bin"
+  curl -fsSL https://starship.rs/install.sh -o "$INSTALL_TMP_DIR/starship-install.sh"
+  TMPDIR="$INSTALL_TMP_DIR" sh "$INSTALL_TMP_DIR/starship-install.sh" --yes --bin-dir "$INSTALL_TMP_DIR/starship-bin"
+  sudo install -Dm0755 "$INSTALL_TMP_DIR/starship-bin/starship" /usr/local/bin/starship
+
+  git clone --depth 1 https://github.com/junegunn/fzf.git "$INSTALL_TMP_DIR/fzf"
+  bash "$INSTALL_TMP_DIR/fzf/install" --bin
+  # 安装器可能复用已安装的同版本文件，避免向自身复制。
+  if [ ! "$INSTALL_TMP_DIR/fzf/bin/fzf" -ef /usr/local/bin/fzf ]; then
+    sudo install -Dm0755 "$INSTALL_TMP_DIR/fzf/bin/fzf" /usr/local/bin/fzf
+  fi
+)
+```
 
 ### 2. 安装 Maple Mono NF CN 字体
 
@@ -152,7 +180,7 @@ fc-cache -f "$FONT_DIR"
 
 ### 3. 备份并部署配置
 
-以下命令在本 README 所在目录（`linux/ubuntu/terminal/`）执行。
+以下命令在本 README 所在目录（`linux/mint/terminal/`）执行。
 
 ```bash
 BACKUP_DIR="$HOME/.config-backup/$(date +%Y%m%d_%H%M%S)"
@@ -177,7 +205,7 @@ cp starship/starship.toml ~/.config/starship.toml
 {
   echo ""
   echo "# >>> linux-ghostty-terminal-config >>>"
-  echo "# 以下内容由 Ubuntu shell 配置安装脚本自动追加"
+  echo "# 以下内容由 Linux Mint shell 配置安装脚本自动追加"
   echo "# 删除方法: 移除从 >>> 到 <<< 之间的所有内容"
   cat zsh/.zshrc
   echo "# <<< linux-ghostty-terminal-config <<<"
@@ -224,6 +252,9 @@ sudo chsh -s "$(command -v zsh)" "$USER"
 
 ```bash
 command -v zsh ghostty starship fzf zoxide eza batcat yazi
+ghostty --version
+starship --version
+fzf --version
 fc-list | grep -i "Maple Mono NF CN" | head -3
 fc-match 'Maple Mono NF CN:spacing=100:lang=zh-cn'
 getent passwd "$USER" | cut -d: -f7
@@ -247,8 +278,10 @@ zsh -lic 'alias ls; alias cat; whence -w y'
 
 安装脚本可以重复运行：
 
-- `universe` 和 Yazi APT 源不会重复添加
-- 已存在且有效的 zsh-completions 会跳过
+- Ghostty PPA 和 Yazi APT 源可重复配置
+- 每次刷新 APT 索引，并将脚本列出的 APT 软件包更新至当前软件源中的候选版本；不执行全系统升级
+- 每次运行 Starship、fzf 上游安装器，安装或更新可执行文件
+- 每次对已有 zsh-completions 执行 `git pull --ff-only`
 - 字体目录中记录的版本与 `MAPLE_VERSION` 相同时跳过下载
 - 每次都会刷新字体缓存
 - Ghostty 和 Starship 配置内容相同时不会重复复制或备份
@@ -309,10 +342,10 @@ fc-cache -fv
 
 ### 找不到软件包
 
-确认系统确实为 Ubuntu 26.04，并检查 `universe` 是否启用：
+确认系统为 Linux Mint 22.3，检查 Ghostty PPA 和 APT 软件包的候选版本：
 
 ```bash
-apt-cache policy ghostty starship eza bat
+apt-cache policy ghostty eza bat
 ```
 
 然后重新运行：
@@ -321,7 +354,7 @@ apt-cache policy ghostty starship eza bat
 sudo apt-get update
 ```
 
-`ghostty` 需要 Ubuntu 26.04 或更新的版本，更早的 Ubuntu 官方源中没有该软件包。
+`ghostty` 通过 `ppa:mkasberg/ghostty-ubuntu` 安装，PPA 使用 Ubuntu 基础代号 `noble`。Starship 和 fzf 安装到 `/usr/local/bin`，不依赖 Noble 中缺失或较旧的 APT 包；请用 `command -v starship fzf` 和对应的 `--version` 检查实际调用的版本。
 
 ### Yazi 软件源冲突
 
