@@ -9,6 +9,7 @@
 ## 效果
 
 - Ghostty 终端：半透明窗口、Catppuccin Mocha 主题、Maple Mono NF CN 字体、10 号
+- Cinnamon 自带 GNOME Terminal：默认配置使用 Maple Mono NF CN Regular、10 号
 - Starship 彩虹条提示符
 - zsh Tab 补全、语法高亮和历史命令自动建议
 - fzf 模糊搜索历史命令与文件
@@ -31,6 +32,7 @@
 
 - Linux Mint 22.3，`/etc/os-release` 中的 `UBUNTU_CODENAME` 为 `noble`
 - 当前用户具有 `sudo` 权限
+- 在 Cinnamon 桌面会话中运行，使用自带的 GNOME Terminal；MATE / Xfce 的终端字体设置不适用
 - 可以访问 Mint / Ubuntu 软件源、Launchpad PPA、GitHub、Starship 官网和 Yazi 官方软件源
 
 ## 与 macOS 版 Ghostty 配置的差异
@@ -66,7 +68,8 @@ bash install.sh
 7. 刷新字体缓存
 8. 备份并安装 Ghostty（CN 字体、10 号）和 Starship 配置
 9. 将 Linux zsh 配置追加到 `~/.zshrc`
-10. 将当前用户的默认 Shell 切换为 zsh
+10. 设置 GNOME Terminal 默认配置的字体为 `Maple Mono NF CN Regular 10`，关闭“使用系统字体”
+11. 将当前用户的默认 Shell 切换为 zsh
 
 ### 3. 重新登录
 
@@ -122,7 +125,7 @@ echo 'deb [signed-by=/usr/share/keyrings/yazi-keyring.gpg] https://yazi-rs.githu
 ```bash
 sudo apt-get update
 sudo apt-get install -y \
-  file fontconfig unzip zsh ghostty zoxide eza bat yazi \
+  file fontconfig libglib2.0-bin unzip zsh ghostty zoxide eza bat yazi \
   zsh-autosuggestions zsh-syntax-highlighting
 
 mkdir -p ~/.local/share
@@ -285,6 +288,7 @@ zsh -lic 'alias ls; alias cat; whence -w y'
 - 字体目录中记录的版本与 `MAPLE_VERSION` 相同时跳过下载
 - 每次都会刷新字体缓存
 - Ghostty 和 Starship 配置内容相同时不会重复复制或备份
+- GNOME Terminal 字体设置相同时跳过；如需调整，可直接在终端偏好设置中修改
 - `~/.zshrc` 中存在 Linux 配置 marker 时不会再次追加
 - 默认 Shell 已是 zsh 时不会重复切换
 

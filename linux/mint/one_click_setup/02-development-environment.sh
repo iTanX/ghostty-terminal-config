@@ -142,99 +142,9 @@ npm install -g @openai/codex
 # progress "AI 工具 / CC Switch"
 # curl -fsSL https://github.com/SaladDay/cc-switch-cli/releases/latest/download/install.sh | bash
 
-# 同步 AI 配置
-
-# 通过 WebDAV 把 .agents 目录同步到 ~/.agents，再把各工具入口链接到同一个 AGENTS.md
-progress "AI 配置 / WebDAV 同步"
-
-# WebDAV 连接信息全部在运行时输入，不写入脚本，避免泄露
-read -r -p "WebDAV 地址（如 https://example.com:8443）: " WEBDAV_URL
-read -r -p "WebDAV 用户名: " WEBDAV_USER
-read -r -s -p "WebDAV 密码: " WEBDAV_PASS
-echo
-
-if [ -z "$WEBDAV_URL" ] || [ -z "$WEBDAV_USER" ] || [ -z "$WEBDAV_PASS" ]; then
-    echo "错误：WebDAV 地址、用户名和密码均不能为空。" >&2
-    exit 1
-fi
-case "$WEBDAV_URL" in
-    http://*|https://*) ;;
-    *)
-        echo "错误：WebDAV 地址必须以 http:// 或 https:// 开头（当前：${WEBDAV_URL}）。" >&2
-        exit 1
-        ;;
-esac
-
-# rclone 只用于本次同步：系统已有则直接使用，没有则临时安装、脚本结束时彻底卸载
-# 用户级目录遵循 XDG 规范，与 rclone 自身的默认路径保持一致
-RCLONE_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rclone"
-RCLONE_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/rclone"
-RCLONE_HOME_CONFIG="$HOME/.rclone.conf"
-
-RCLONE_TEMP_INSTALLED=0
-# 分别记录三个用户级路径在运行前是否已存在，仅清理本次新建的
-RCLONE_CONFIG_DIR_PREEXISTED=0
-RCLONE_CACHE_DIR_PREEXISTED=0
-RCLONE_HOME_CONFIG_PREEXISTED=0
-[ -e "$RCLONE_CONFIG_DIR" ] && RCLONE_CONFIG_DIR_PREEXISTED=1
-[ -e "$RCLONE_CACHE_DIR" ] && RCLONE_CACHE_DIR_PREEXISTED=1
-[ -e "$RCLONE_HOME_CONFIG" ] && RCLONE_HOME_CONFIG_PREEXISTED=1
-true
-
-# 清理函数同时挂到 EXIT trap，保证中途失败或中断时也不会留下 rclone
-cleanup_rclone() {
-    [ "$RCLONE_TEMP_INSTALLED" -eq 1 ] || return 0
-    RCLONE_TEMP_INSTALLED=0
-    echo ""
-    echo "==> 清理临时安装的 rclone"
-    # 卸载 rclone，再由包管理器按依赖图清理不再被任何包需要的自动安装包
-    sudo apt-get purge -y rclone || true
-    sudo apt-get autoremove --purge -y || true
-    # 删除本次安装留下的 apt 包缓存
-    sudo sh -c 'rm -f /var/cache/apt/archives/rclone_*.deb' || true
-    # 仅删除本次运行前不存在的用户级配置与缓存，避免影响原有 rclone 数据
-    if [ "$RCLONE_CONFIG_DIR_PREEXISTED" -eq 0 ]; then
-        rm -rf "$RCLONE_CONFIG_DIR"
-    fi
-    if [ "$RCLONE_CACHE_DIR_PREEXISTED" -eq 0 ]; then
-        rm -rf "$RCLONE_CACHE_DIR"
-    fi
-    if [ "$RCLONE_HOME_CONFIG_PREEXISTED" -eq 0 ]; then
-        rm -f "$RCLONE_HOME_CONFIG"
-    fi
-    echo "    ✓ rclone 已卸载"
-}
-trap cleanup_rclone EXIT
-
-if command -v rclone >/dev/null 2>&1; then
-    echo "    检测到系统已安装 rclone，直接使用，不做安装或卸载。"
-else
-    echo "    系统未安装 rclone，临时安装。"
-    sudo apt-get install -y --no-install-recommends rclone
-    RCLONE_TEMP_INSTALLED=1
-fi
-
-# rclone 的 WebDAV 密码参数必须使用 rclone obscure 处理后的值
-RCLONE_PASS="$(rclone obscure "$WEBDAV_PASS")"
-
-# 通过独立参数传递连接信息：URL 中的冒号（协议、端口）在 rclone 连接串里需要转义，
-# 改用参数形式可以避免解析截断
-if ! rclone copy \
-    ":webdav:/swap/AI/.agents" \
-    "$HOME/.agents" \
-    --webdav-url "$WEBDAV_URL" \
-    --webdav-user "$WEBDAV_USER" \
-    --webdav-pass "$RCLONE_PASS" \
-    --create-empty-src-dirs \
-    --exclude '/.stfolder*/**' \
-    --exclude '/.stignore' \
-    --exclude '/#SyncVersion/**'; then
-    echo "错误：从 WebDAV 下载 .agents 失败，请检查网络、证书和账号密码。" >&2
-    exit 1
-fi
-
-# 前置校验
-[ -f "$HOME/.agents/AGENTS.md" ] || { echo "错误: $HOME/.agents/AGENTS.md 不存在" >&2; exit 1; }
+# AI 配置链接
+# 本脚本不再下载或同步 AI 配置；允许先建链接，之后再准备 ~/.agents/AGENTS.md。
+progress "AI 配置 / 建立 AGENTS.md 链接"
 
 mkdir -p "$HOME/.claude" "$HOME/.codex"
 
@@ -252,12 +162,9 @@ link() {
 link "$HOME/.agents/AGENTS.md" "$HOME/.claude/CLAUDE.md"   # 1. ~/.claude/CLAUDE.md -> ~/.agents/AGENTS.md
 link "$HOME/.agents/AGENTS.md" "$HOME/.codex/AGENTS.md"    # 2. ~/.codex/AGENTS.md  -> ~/.agents/AGENTS.md
 
-# ---------- 验证 ----------
+# ---------- 验证软链接本身（目标文件允许尚不存在）----------
 for p in "$HOME/.claude/CLAUDE.md" "$HOME/.codex/AGENTS.md"; do
-    [ -e "$p" ] && echo "OK   $p -> $(readlink "$p")" || { echo "失败 $p" >&2; exit 1; }
+    [ -L "$p" ] && echo "OK   $p -> $(readlink "$p")" || { echo "失败 $p" >&2; exit 1; }
 done
-
-# rclone 用完即卸（若系统原本没有）
-cleanup_rclone
 
 printf '\n开发环境配置完成。请注销后重新登录，使新安装工具的环境变量完全生效。\n'

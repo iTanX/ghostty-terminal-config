@@ -11,7 +11,7 @@
 #   2. 通过上游安装器更新 Starship 和 fzf，通过 Git 更新 zsh-completions
 #   3. 安装 Maple Mono NF CN 字体到 ~/.local/share/fonts/maple-mono-nf-cn
 #   4. 备份已有 Ghostty 和 Starship 配置到 ~/.config-backup/YYYYMMDD_HHMMSS/
-#   5. 安装 Ghostty、Starship 和 zsh 配置，并将默认 Shell 切换为 zsh
+#   5. 安装 Ghostty、Starship 和 zsh 配置，设置系统终端字体，并将默认 Shell 切换为 zsh
 #
 # 恢复备份:
 #   rm -f ~/.config/ghostty/config
@@ -100,7 +100,8 @@ echo "  1. 添加 Ghostty 社区 PPA 和 Yazi 官方签名 APT 源，安装或�
 echo "  2. 更新 Starship、fzf 和 zsh-completions"
 echo "  3. 从官方 GitHub Release 安装 Maple Mono NF CN 字体"
 echo "  4. 备份并安装 Ghostty、Starship 和 zsh 配置"
-echo "  5. 将当前用户的默认 Shell 切换为 zsh"
+echo "  5. 将系统默认终端 GNOME Terminal 的字体设为 Maple Mono NF CN"
+echo "  6. 将当前用户的默认 Shell 切换为 zsh"
 echo ""
 echo "已有 Ghostty 和 Starship 配置将备份到: $BACKUP_DIR"
 echo ""
@@ -154,6 +155,7 @@ sudo apt-get update
 sudo apt-get install -y \
   file \
   fontconfig \
+  libglib2.0-bin \
   unzip \
   zsh \
   ghostty \
@@ -301,6 +303,43 @@ else
 fi
 
 # ==============================================================================
+# 设置默认终端字体（Linux Mint Cinnamon 自带 GNOME Terminal）
+# ==============================================================================
+echo "==> 设置 GNOME Terminal 默认配置的字体..."
+if ! gsettings list-schemas | grep -Fx 'org.gnome.Terminal.ProfilesList' >/dev/null; then
+  echo "错误: 未检测到 GNOME Terminal 配置；此字体设置步骤适用于 Mint Cinnamon，请在桌面会话中运行。" >&2
+  exit 1
+fi
+TERMINAL_PROFILE="$(gsettings get org.gnome.Terminal.ProfilesList default)"
+TERMINAL_PROFILE="${TERMINAL_PROFILE#\'}"
+TERMINAL_PROFILE="${TERMINAL_PROFILE%\'}"
+if [[ ! "$TERMINAL_PROFILE" =~ ^[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}$ ]]; then
+  echo "错误: GNOME Terminal 默认配置 ID 无效，请先打开终端创建默认配置。" >&2
+  exit 1
+fi
+TERMINAL_SETTINGS="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$TERMINAL_PROFILE/"
+TERMINAL_FONT="Maple Mono NF CN Regular 10"
+for key in font use-system-font; do
+  if [ "$(gsettings writable "$TERMINAL_SETTINGS" "$key")" != true ]; then
+    echo "错误: GNOME Terminal 的 $key 设置不可写，请检查桌面策略。" >&2
+    exit 1
+  fi
+done
+if [ "$(gsettings get "$TERMINAL_SETTINGS" font)" = "'$TERMINAL_FONT'" ] &&
+   [ "$(gsettings get "$TERMINAL_SETTINGS" use-system-font)" = false ]; then
+  echo "    GNOME Terminal 字体已是 $TERMINAL_FONT，跳过。"
+else
+  gsettings set "$TERMINAL_SETTINGS" font "$TERMINAL_FONT"
+  gsettings set "$TERMINAL_SETTINGS" use-system-font false
+  if [ "$(gsettings get "$TERMINAL_SETTINGS" font)" != "'$TERMINAL_FONT'" ] ||
+     [ "$(gsettings get "$TERMINAL_SETTINGS" use-system-font)" != false ]; then
+    echo "错误: GNOME Terminal 字体设置未保存，请在当前用户的桌面会话中运行。" >&2
+    exit 1
+  fi
+  echo "    ✓ GNOME Terminal = $TERMINAL_FONT"
+fi
+
+# ==============================================================================
 # 设置默认 Shell
 # ==============================================================================
 ZSH_PATH="$(command -v zsh)"
@@ -322,7 +361,7 @@ echo " 安装完成！"
 echo "======================================"
 echo ""
 echo "请重新打开终端（或注销后重新登录）生效。"
-echo "默认字体: Ghostty = Maple Mono NF CN，10 号。"
+echo "默认字体: Ghostty、GNOME Terminal = Maple Mono NF CN Regular，10 号。"
 echo "若 Ghostty 仍在运行，请完全退出旧进程后重新打开。"
 echo ""
 if [ -d "$BACKUP_DIR" ]; then

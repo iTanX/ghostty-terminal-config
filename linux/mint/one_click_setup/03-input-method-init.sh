@@ -14,7 +14,8 @@ if [ "$(id -u)" -eq 0 ]; then
 fi
 
 RIME_DIR="$HOME/.local/share/fcitx5/rime"
-ENV_FILE="$HOME/.config/environment.d/fcitx5.conf"
+PROFILE_FILE="$HOME/.profile"
+PROFILE_MARKER="# >>> fcitx5-input-method >>>"
 AUTOSTART_SOURCE="/usr/share/applications/org.fcitx.Fcitx5.desktop"
 AUTOSTART_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/autostart/org.fcitx.Fcitx5.desktop"
 
@@ -46,18 +47,20 @@ fi
 
 # ===== 步骤 3：配置环境变量 =====
 echo "[3/4] 写入环境变量配置..."
-mkdir -p "$(dirname "$ENV_FILE")"
-# 注意：environment.d 格式要求不要写 export、不要加引号
-# 若文件已存在则不覆盖，避免冲掉用户自定义内容
-if [ -e "$ENV_FILE" ]; then
-  echo "已存在 ${ENV_FILE}，跳过写入（如需修改请手动编辑）。"
+# Mint 桌面登录时读取 ~/.profile；保留原有内容，重复运行不追加同一配置块。
+if grep -Fqx "$PROFILE_MARKER" "$PROFILE_FILE" 2>/dev/null; then
+  echo "${PROFILE_FILE} 中已存在 Fcitx5 环境变量配置，跳过追加。"
 else
-  cat > "$ENV_FILE" <<'EOF'
-GTK_IM_MODULE=fcitx
-QT_IM_MODULE=fcitx
-XMODIFIERS=@im=fcitx
+  cat >> "$PROFILE_FILE" <<'EOF'
+
+# >>> fcitx5-input-method >>>
+# Fcitx5 输入法环境变量：为 GTK、Qt 和 X11 应用启用 Fcitx 输入法，注销重登后生效。
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+export XMODIFIERS=@im=fcitx
+# <<< fcitx5-input-method <<<
 EOF
-  echo "已写入 $ENV_FILE"
+  echo "已追加 Fcitx5 输入法环境变量到 $PROFILE_FILE"
 fi
 
 # ===== 步骤 4：安装雾凇拼音 =====
