@@ -33,6 +33,8 @@ GHOSTTY_SOURCE="$SCRIPT_DIR/ghostty/config"
 GHOSTTY_TARGET="$CONFIG_DIR/ghostty/config"
 STARSHIP_SOURCE="$SCRIPT_DIR/starship/starship.toml"
 STARSHIP_TARGET="$CONFIG_DIR/starship.toml"
+FONT_SETUP_SCRIPT="$SCRIPT_DIR/configure-fonts.sh"
+FONTCONFIG_SOURCE="$SCRIPT_DIR/fontconfig/99-maple-mono-nf-cn-ghostty.conf"
 ZSH_SOURCE="$SCRIPT_DIR/zsh/.zshrc"
 ZSH_COMPLETIONS_DIR="$HOME/.local/share/zsh-completions"
 ZSH_MARKER_START="# >>> linux-ghostty-terminal-config >>>"
@@ -84,6 +86,10 @@ fi
 
 if [ ! -f "$GHOSTTY_SOURCE" ] || [ ! -f "$STARSHIP_SOURCE" ] || [ ! -f "$ZSH_SOURCE" ]; then
   echo "错误: 未找到配置文件，请确认以下文件存在于 $SCRIPT_DIR 下: ghostty/config、starship/starship.toml、zsh/.zshrc"
+  exit 1
+fi
+if [ ! -f "$FONT_SETUP_SCRIPT" ] || [ ! -f "$FONTCONFIG_SOURCE" ]; then
+  echo "错误: 未找到 configure-fonts.sh 或 Fontconfig 规则，请保留完整的 terminal 目录。"
   exit 1
 fi
 
@@ -241,8 +247,8 @@ else
   echo "    ✓ $FONT_DIR ($MAPLE_VERSION)"
 fi
 
-# 刷新用户字体缓存，使新安装的字体可被终端识别。
-fc-cache -f "$FONT_DIR" >/dev/null
+# 安装字体匹配规则并刷新缓存，避免中文环境中被 Noto 替代。
+bash "$FONT_SETUP_SCRIPT" "$BACKUP_DIR"
 
 # ==============================================================================
 # 安装配置文件

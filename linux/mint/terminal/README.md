@@ -25,6 +25,8 @@
 | `starship/starship.toml` | Starship 彩虹条提示符配置 | `~/.config/starship.toml` |
 | `zsh/.zshrc` | Linux Mint 版 zsh 配置 | 追加到 `~/.zshrc` 的受控标记块内 |
 | `install.sh` | Linux Mint 22.3 一键安装及更新脚本 | 可在任意目录运行（自动定位配置） |
+| `configure-fonts.sh` | 单独修复 Ghostty 字体匹配，不更新软件包 | 安装脚本自动调用，也可单独运行 |
+| `fontconfig/99-maple-mono-nf-cn-ghostty.conf` | 防止中文环境将 Maple 替换为 Noto | `~/.config/fontconfig/conf.d/` |
 
 配置目录遵循 `XDG_CONFIG_HOME`，未设置时使用 `~/.config`。Ghostty 的默认字重为 Regular；`eza` 等程序仍可为目录名请求粗体，Starship 彩虹条路径保持原有常规样式。
 
@@ -65,7 +67,7 @@ bash install.sh
 4. 通过 APT 安装或更新 Ghostty、zsh、zoxide、eza、bat、Yazi 和两个 zsh 插件；通过上游安装器更新 Starship、fzf 到 `/usr/local/bin`
 5. 首次克隆 zsh-completions 到 `~/.local/share/zsh-completions`，再次运行时执行 `git pull --ff-only`
 6. 从官方 GitHub Release 下载 Maple Mono NF CN 字体并校验完整性，安装到 `~/.local/share/fonts/maple-mono-nf-cn`
-7. 刷新字体缓存
+7. 安装 Fontconfig 兼容规则、刷新字体缓存，并验证中英文环境下的字体匹配
 8. 备份并安装 Ghostty（CN 字体、10 号）和 Starship 配置
 9. 将 Linux zsh 配置追加到 `~/.zshrc`
 10. 设置 GNOME Terminal 默认配置的字体为 `Maple Mono NF CN Regular 10`，关闭“使用系统字体”
@@ -181,6 +183,12 @@ printf 'v7.9\n' > "$FONT_DIR/.version"
 fc-cache -f "$FONT_DIR"
 ```
 
+安装字体匹配规则，避免中文环境下 Ghostty 实际使用 Noto 字体。在本 README 所在目录运行：
+
+```bash
+bash configure-fonts.sh
+```
+
 ### 3. 备份并部署配置
 
 以下命令在本 README 所在目录（`linux/mint/terminal/`）执行。
@@ -286,7 +294,7 @@ zsh -lic 'alias ls; alias cat; whence -w y'
 - 每次运行 Starship、fzf 上游安装器，安装或更新可执行文件
 - 每次对已有 zsh-completions 执行 `git pull --ff-only`
 - 字体目录中记录的版本与 `MAPLE_VERSION` 相同时跳过下载
-- 每次都会刷新字体缓存
+- 每次都会核对 Fontconfig 规则、刷新字体缓存，并验证中文和英文环境的常规、粗体匹配
 - Ghostty 和 Starship 配置内容相同时不会重复复制或备份
 - GNOME Terminal 字体设置相同时跳过；如需调整，可直接在终端偏好设置中修改
 - `~/.zshrc` 中存在 Linux 配置 marker 时不会再次追加
@@ -313,6 +321,8 @@ cp -a ~/.config-backup/<时间戳>/starship.toml ~/.config/starship.toml
 
 只会为确实被替换的配置创建对应备份文件。
 
+已有字体匹配规则被替换时，也会备份为同一目录下的 `maple-mono-nf-cn-ghostty.conf`，恢复位置为 `${XDG_CONFIG_HOME:-$HOME/.config}/fontconfig/conf.d/99-maple-mono-nf-cn-ghostty.conf`。首次安装时没有旧规则；如需撤销，删除新增的规则并重启 Ghostty。
+
 zsh 配置不会覆盖原文件，而是写在以下标记之间：
 
 ```text
@@ -325,6 +335,25 @@ zsh 配置不会覆盖原文件，而是写在以下标记之间：
 安装器不会自动卸载 APT 软件包、删除 Yazi 软件源、删除 `~/.local/share/zsh-completions` 或删除已安装的字体，避免影响这些组件的其他用途。如确认不再使用，请自行清理。
 
 ## 常见问题
+
+### 文件列表中英文和中文的字形不同于系统终端，显得窄长
+
+中文桌面环境下，即使 Ghostty 配置了 `Maple Mono NF CN`，Fontconfig 仍可能将其匹配为 `Noto Sans Mono CJK SC`。Ghostty 请求 `spacing=100`（等宽），系统的 `48-spacing.conf` 因此加入通用的 `monospace`，后续中文字体规则可能使 Noto 排到 Maple 前面。Maple CN 的原生分类是 `spacing=90`（中英文双宽），GNOME Terminal 的字体请求方式不同，所以相同的字体设置不一定得到相同字形。
+
+在本目录运行以下命令即可修复，无需重新安装软件或改变字号、字宽：
+
+```bash
+bash configure-fonts.sh
+```
+
+然后完全退出 Ghostty 的旧进程并重新打开。仅重新加载 Ghostty 配置不一定刷新 Fontconfig 的进程内状态。新进程可用中文语言环境验证实际字体：
+
+```bash
+LC_ALL=zh_CN.UTF-8 LANG=zh_CN.UTF-8 ghostty +show-face --string='frankchanABC文档下载'
+LC_ALL=zh_CN.UTF-8 LANG=zh_CN.UTF-8 ghostty +show-face --style=bold --string='frankchanABC文档下载'
+```
+
+所有字符都应显示 `Maple Mono NF CN`。不要只在 `C.UTF-8` 环境测试，它可能原本就匹配正确，掩盖中文桌面的问题。兼容规则只处理明确指定 Maple CN 的字体请求。
 
 ### 窗口没有毛玻璃模糊效果
 
