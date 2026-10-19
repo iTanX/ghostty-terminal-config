@@ -7,11 +7,11 @@
 #   bash install.sh
 #
 # 说明:
-#   1. 添加 Yazi 官方 APT 源，安装或更新终端工具与 zsh 插件（Ghostty 步骤暂时注释）
+#   1. 添加 Ghostty 社区 PPA 和 Yazi 官方 APT 源，安装或更新终端工具与 zsh 插件
 #   2. 通过上游安装器更新 Starship 和 fzf，通过 Git 更新 zsh-completions
 #   3. 安装 Maple Mono NF CN 字体到 ~/.local/share/fonts/maple-mono-nf-cn
-#   4. 备份已有 Starship 配置到 ~/.config-backup/YYYYMMDD_HHMMSS/
-#   5. 安装 Starship 和 zsh 配置，并将默认 Shell 切换为 zsh
+#   4. 备份已有 Ghostty 和 Starship 配置到 ~/.config-backup/YYYYMMDD_HHMMSS/
+#   5. 安装 Ghostty、Starship 和 zsh 配置，并将默认 Shell 切换为 zsh
 #
 # 恢复备份:
 #   rm -f ~/.config/ghostty/config
@@ -29,9 +29,8 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 BACKUP_DIR="$HOME/.config-backup/$(date +%Y%m%d_%H%M%S)"
 TMP_DIR="$(mktemp -d)"
-# Ghostty 配置暂不部署，保留变量供恢复安装时使用。
-# GHOSTTY_SOURCE="$SCRIPT_DIR/ghostty/config"
-# GHOSTTY_TARGET="$CONFIG_DIR/ghostty/config"
+GHOSTTY_SOURCE="$SCRIPT_DIR/ghostty/config"
+GHOSTTY_TARGET="$CONFIG_DIR/ghostty/config"
 STARSHIP_SOURCE="$SCRIPT_DIR/starship/starship.toml"
 STARSHIP_TARGET="$CONFIG_DIR/starship.toml"
 ZSH_SOURCE="$SCRIPT_DIR/zsh/.zshrc"
@@ -83,13 +82,8 @@ if ! command -v sudo &> /dev/null; then
   exit 1
 fi
 
-# Ghostty 配置检查暂时停用。
-# if [ ! -f "$GHOSTTY_SOURCE" ]; then
-#   echo "错误: 未找到 Ghostty 配置文件: $GHOSTTY_SOURCE"
-#   exit 1
-# fi
-if [ ! -f "$STARSHIP_SOURCE" ] || [ ! -f "$ZSH_SOURCE" ]; then
-  echo "错误: 未找到配置文件，请确认以下文件存在于 $SCRIPT_DIR 下: starship/starship.toml、zsh/.zshrc"
+if [ ! -f "$GHOSTTY_SOURCE" ] || [ ! -f "$STARSHIP_SOURCE" ] || [ ! -f "$ZSH_SOURCE" ]; then
+  echo "错误: 未找到配置文件，请确认以下文件存在于 $SCRIPT_DIR 下: ghostty/config、starship/starship.toml、zsh/.zshrc"
   exit 1
 fi
 
@@ -102,13 +96,13 @@ echo " Linux Mint 22.3 Shell Config 安装及更新脚本"
 echo "======================================"
 echo ""
 echo "本脚本将执行以下操作:"
-echo "  1. 添加 Yazi 官方签名 APT 源，安装或更新 APT 软件包"
+echo "  1. 添加 Ghostty 社区 PPA 和 Yazi 官方签名 APT 源，安装或更新 APT 软件包"
 echo "  2. 更新 Starship、fzf 和 zsh-completions"
 echo "  3. 从官方 GitHub Release 安装 Maple Mono NF CN 字体"
-echo "  4. 备份并安装 Starship 和 zsh 配置"
+echo "  4. 备份并安装 Ghostty、Starship 和 zsh 配置"
 echo "  5. 将当前用户的默认 Shell 切换为 zsh"
 echo ""
-echo "已有 Starship 配置将备份到: $BACKUP_DIR"
+echo "已有 Ghostty 和 Starship 配置将备份到: $BACKUP_DIR"
 echo ""
 # read -r -p "是否继续？(y/n) " -n 1 REPLY < /dev/tty
 # echo ""
@@ -123,13 +117,11 @@ echo ""
 # ==============================================================================
 echo "==> 安装 APT 基础依赖..."
 sudo apt-get update
-sudo apt-get install -y ca-certificates curl gnupg git
+sudo apt-get install -y mintsources ca-certificates curl gnupg git
 
-# Ghostty PPA 暂时停用；mintsources 用于添加 PPA，恢复时一并启用。
-# sudo apt-get install -y mintsources
 # Mint 的命令自动使用 Ubuntu 基础代号，可重复执行；不支持 Ubuntu 的 --no-update 参数。
-# echo "==> 配置 Ghostty 社区 PPA..."
-# sudo add-apt-repository -y ppa:mkasberg/ghostty-ubuntu
+echo "==> 配置 Ghostty 社区 PPA..."
+sudo add-apt-repository -y ppa:mkasberg/ghostty-ubuntu
 
 # ==============================================================================
 # 添加 Yazi 官方 APT 源
@@ -164,15 +156,13 @@ sudo apt-get install -y \
   fontconfig \
   unzip \
   zsh \
+  ghostty \
   zoxide \
   eza \
   bat \
   yazi \
   zsh-autosuggestions \
   zsh-syntax-highlighting
-
-# Ghostty 安装或更新暂时停用，恢复时取消此处及 PPA 步骤的注释。
-# sudo apt-get install -y ghostty
 
 # ==============================================================================
 # 安装或更新 Starship 和 fzf
@@ -258,25 +248,24 @@ fc-cache -f "$FONT_DIR" >/dev/null
 echo "==> 安装配置文件..."
 mkdir -p "$CONFIG_DIR"
 
-# Ghostty 配置备份与部署暂时停用，保留现有用户配置。
-# if [ -d "$GHOSTTY_TARGET" ] && [ ! -L "$GHOSTTY_TARGET" ]; then
-#   echo "错误: $GHOSTTY_TARGET 是目录，无法安装 Ghostty 配置。"
-#   exit 1
-# fi
+if [ -d "$GHOSTTY_TARGET" ] && [ ! -L "$GHOSTTY_TARGET" ]; then
+  echo "错误: $GHOSTTY_TARGET 是目录，无法安装 Ghostty 配置。"
+  exit 1
+fi
 
-# if [ -f "$GHOSTTY_TARGET" ] && cmp -s "$GHOSTTY_SOURCE" "$GHOSTTY_TARGET"; then
-#   echo "    Ghostty 配置已是最新，跳过。"
-# else
-#   if [ -e "$GHOSTTY_TARGET" ] || [ -L "$GHOSTTY_TARGET" ]; then
-#     mkdir -p "$BACKUP_DIR"
-#     cp -a "$GHOSTTY_TARGET" "$BACKUP_DIR/ghostty-config"
-#     echo "    备份 $GHOSTTY_TARGET"
-#     rm -f "$GHOSTTY_TARGET"
-#   fi
-#   mkdir -p "$(dirname "$GHOSTTY_TARGET")"
-#   cp "$GHOSTTY_SOURCE" "$GHOSTTY_TARGET"
-#   echo "    ✓ $GHOSTTY_TARGET"
-# fi
+if [ -f "$GHOSTTY_TARGET" ] && cmp -s "$GHOSTTY_SOURCE" "$GHOSTTY_TARGET"; then
+  echo "    Ghostty 配置已是最新，跳过。"
+else
+  if [ -e "$GHOSTTY_TARGET" ] || [ -L "$GHOSTTY_TARGET" ]; then
+    mkdir -p "$BACKUP_DIR"
+    cp -a "$GHOSTTY_TARGET" "$BACKUP_DIR/ghostty-config"
+    echo "    备份 $GHOSTTY_TARGET"
+    rm -f "$GHOSTTY_TARGET"
+  fi
+  mkdir -p "$(dirname "$GHOSTTY_TARGET")"
+  cp "$GHOSTTY_SOURCE" "$GHOSTTY_TARGET"
+  echo "    ✓ $GHOSTTY_TARGET"
+fi
 
 if [ -d "$STARSHIP_TARGET" ] && [ ! -L "$STARSHIP_TARGET" ]; then
   echo "错误: $STARSHIP_TARGET 是目录，无法安装 Starship 配置。"
@@ -333,15 +322,15 @@ echo " 安装完成！"
 echo "======================================"
 echo ""
 echo "请重新打开终端（或注销后重新登录）生效。"
-# echo "默认字体: Ghostty = Maple Mono NF CN，10 号。"
-# echo "若 Ghostty 仍在运行，请完全退出旧进程后重新打开。"
+echo "默认字体: Ghostty = Maple Mono NF CN，10 号。"
+echo "若 Ghostty 仍在运行，请完全退出旧进程后重新打开。"
 echo ""
 if [ -d "$BACKUP_DIR" ]; then
   echo "恢复旧配置:"
-  # if [ -e "$BACKUP_DIR/ghostty-config" ] || [ -L "$BACKUP_DIR/ghostty-config" ]; then
-  #   echo "  rm -f $GHOSTTY_TARGET"
-  #   echo "  cp -a $BACKUP_DIR/ghostty-config $GHOSTTY_TARGET"
-  # fi
+  if [ -e "$BACKUP_DIR/ghostty-config" ] || [ -L "$BACKUP_DIR/ghostty-config" ]; then
+    echo "  rm -f $GHOSTTY_TARGET"
+    echo "  cp -a $BACKUP_DIR/ghostty-config $GHOSTTY_TARGET"
+  fi
   if [ -e "$BACKUP_DIR/starship.toml" ] || [ -L "$BACKUP_DIR/starship.toml" ]; then
     echo "  rm -f $STARSHIP_TARGET"
     echo "  cp -a $BACKUP_DIR/starship.toml $STARSHIP_TARGET"
