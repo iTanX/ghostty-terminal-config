@@ -1,28 +1,8 @@
 #!/bin/bash
 
 # ==============================================================================
-# Linux Mint 22.3 Shell Config 一键安装及更新脚本
+# 准备配置
 # ==============================================================================
-# 用法（在脚本所在目录执行）:
-#   bash install.sh
-#
-# 说明:
-#   1. 添加 Ghostty 社区 PPA 和 Yazi 官方 APT 源，安装或更新终端工具与 zsh 插件
-#   2. 通过上游安装器更新 Starship 和 fzf，通过 Git 更新 zsh-completions
-#   3. 安装 Maple Mono NF CN 字体到 ~/.local/share/fonts/maple-mono-nf-cn
-#   4. 备份已有 Ghostty 和 Starship 配置到 ~/.config-backup/YYYYMMDD_HHMMSS/
-#   5. 安装 Ghostty、Starship 和 zsh 配置，设置系统终端字体，并将默认 Shell 切换为 zsh
-#
-# 恢复备份:
-#   rm -f ~/.config/ghostty/config
-#   cp -a ~/.config-backup/<时间戳>/ghostty-config ~/.config/ghostty/config
-#   rm -f ~/.config/starship.toml
-#   cp -a ~/.config-backup/<时间戳>/starship.toml ~/.config/starship.toml
-#
-# 卸载 zsh 配置:
-#   删除 ~/.zshrc 中 ">>> linux-ghostty-terminal-config >>>" 到 "<<< linux-ghostty-terminal-config <<<" 之间的内容
-# ==============================================================================
-
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -43,24 +23,18 @@ YAZI_KEY_URL="https://yazi-rs.github.io/builds/yazi-keyring.gpg"
 YAZI_KEYRING="/usr/share/keyrings/yazi-keyring.gpg"
 YAZI_SOURCE_LIST="/etc/apt/sources.list.d/yazi.list"
 YAZI_APT_SOURCE="deb [signed-by=$YAZI_KEYRING] https://yazi-rs.github.io/builds/ stable main"
-# Maple Mono NF CN 没有 Ubuntu 软件包，只能从 GitHub Release 下载
-# 固定版本，升级时只改这里
 MAPLE_VERSION="v7.9"
 MAPLE_RELEASE_URL="https://github.com/subframe7536/maple-font/releases/download/$MAPLE_VERSION"
 MAPLE_ZIP_NAME="MapleMono-NF-CN.zip"
 MAPLE_SHA_NAME="MapleMono-NF-CN.sha256"
-# 用户级字体目录，无需 sudo，fontconfig 会自动扫描
 FONT_DIR="$HOME/.local/share/fonts/maple-mono-nf-cn"
 
-# 下载文件与 fzf 临时仓库均放在此目录，成功或失败退出时一并清理。
 cleanup() {
   rm -rf "$TMP_DIR"
 }
 trap cleanup EXIT
 
-# ==============================================================================
-# 检查环境
-# ==============================================================================
+# 1. 检查运行环境
 if [ "$(id -u)" -eq 0 ]; then
   echo "错误: 请使用普通用户运行本脚本，不要使用 root。"
   exit 1
@@ -71,7 +45,6 @@ if [ ! -r /etc/os-release ]; then
   exit 1
 fi
 
-# Mint 22.3 使用 Ubuntu Noble 基础源，不能用 Mint 的 Zena 代号添加 Ubuntu 源。
 . /etc/os-release
 if [ "${ID:-}" != "linuxmint" ] || [ "${VERSION_ID:-}" != "22.3" ] || [ "${UBUNTU_CODENAME:-}" != "noble" ]; then
   echo "错误: 本脚本仅支持 Linux Mint 22.3（Ubuntu Noble 基础）。"
@@ -94,45 +67,60 @@ if [ ! -f "$FONT_SETUP_SCRIPT" ] || [ ! -f "$FONTCONFIG_SOURCE" ]; then
 fi
 
 # ==============================================================================
-# 用户确认
+# 显示配置步骤
 # ==============================================================================
 echo ""
 echo "======================================"
-echo " Linux Mint 22.3 Shell Config 安装及更新脚本"
+echo " 终端环境安装及更新"
 echo "======================================"
 echo ""
-echo "本脚本将执行以下操作:"
-echo "  1. 添加 Ghostty 社区 PPA 和 Yazi 官方签名 APT 源，安装或更新 APT 软件包"
-echo "  2. 更新 Starship、fzf 和 zsh-completions"
-echo "  3. 从官方 GitHub Release 安装 Maple Mono NF CN 字体"
-echo "  4. 备份并安装 Ghostty、Starship 和 zsh 配置"
-echo "  5. 将系统默认终端 GNOME Terminal 的字体设为 Maple Mono NF CN"
-echo "  6. 将当前用户的默认 Shell 切换为 zsh"
-echo ""
+echo "本脚本将安装终端工具、字体和配置，设置默认终端字体与 Shell。"
 echo "已有 Ghostty 和 Starship 配置将备份到: $BACKUP_DIR"
 echo ""
-# read -r -p "是否继续？(y/n) " -n 1 REPLY < /dev/tty
-# echo ""
-# if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-#   echo "已取消安装。"
-#   exit 0
-# fi
-# echo ""
 
 # ==============================================================================
-# 安装 APT 依赖
+# 安装终端工具
 # ==============================================================================
+# 1. 安装依赖
 echo "==> 安装 APT 基础依赖..."
 sudo apt-get update
-sudo apt-get install -y mintsources ca-certificates curl gnupg git
+sudo apt-get install -y ca-certificates curl gnupg git file fontconfig libglib2.0-bin unzip
+sudo apt-get install -y mintsources
 
-# Mint 的命令自动使用 Ubuntu 基础代号，可重复执行；不支持 Ubuntu 的 --no-update 参数。
-echo "==> 配置 Ghostty 社区 PPA..."
+# 2. 安装终端工具与插件
+echo "==> 安装终端工具和 zsh 插件..."
+sudo apt-get install -y \
+  zsh \
+  zoxide \
+  eza \
+  bat \
+  zsh-autosuggestions \
+  zsh-syntax-highlighting
+
+# 2.1 安装 Starship
+echo "==> 安装或更新 Starship..."
+mkdir -p "$TMP_DIR/starship-bin"
+curl -fsSL https://starship.rs/install.sh -o "$TMP_DIR/starship-install.sh"
+TMPDIR="$TMP_DIR" sh "$TMP_DIR/starship-install.sh" --yes --bin-dir "$TMP_DIR/starship-bin"
+sudo install -Dm0755 "$TMP_DIR/starship-bin/starship" /usr/local/bin/starship
+
+# 2.2 安装 fzf
+echo "==> 安装或更新 fzf..."
+git clone --depth 1 https://github.com/junegunn/fzf.git "$TMP_DIR/fzf"
+bash "$TMP_DIR/fzf/install" --bin
+if [ ! "$TMP_DIR/fzf/bin/fzf" -ef /usr/local/bin/fzf ]; then
+  sudo install -Dm0755 "$TMP_DIR/fzf/bin/fzf" /usr/local/bin/fzf
+fi
+
+# 2.3 安装 Ghostty
+echo "==> 配置 Ghostty 软件源..."
 sudo add-apt-repository -y ppa:mkasberg/ghostty-ubuntu
+sudo apt-get update
+sudo apt-get install -y ghostty
 
-# ==============================================================================
-# 添加 Yazi 官方 APT 源
-# ==============================================================================
+# 3. 安装 Yazi
+
+# 3.1 配置软件源
 echo "==> 配置 Yazi 官方 APT 源..."
 curl -fsSL "$YAZI_KEY_URL" -o "$TMP_DIR/yazi-keyring.gpg"
 if ! sudo cmp -s "$TMP_DIR/yazi-keyring.gpg" "$YAZI_KEYRING"; then
@@ -155,48 +143,13 @@ else
   echo "    ✓ $YAZI_SOURCE_LIST"
 fi
 
-echo "==> 安装或更新终端工具和 zsh 插件..."
+# 3.2 安装软件包
 sudo apt-get update
-# install 同时将已安装的指定包升级到当前源中的候选版本。
-sudo apt-get install -y \
-  file \
-  fontconfig \
-  libglib2.0-bin \
-  unzip \
-  zsh \
-  ghostty \
-  zoxide \
-  eza \
-  bat \
-  yazi \
-  zsh-autosuggestions \
-  zsh-syntax-highlighting
+sudo apt-get install -y yazi
 
-# ==============================================================================
-# 安装或更新 Starship 和 fzf
-# ==============================================================================
-# 先在临时目录完成下载，再安装到 /usr/local/bin，失败时保留原有可执行文件。
-echo "==> 安装或更新 Starship..."
-mkdir -p "$TMP_DIR/starship-bin"
-curl -fsSL https://starship.rs/install.sh -o "$TMP_DIR/starship-install.sh"
-TMPDIR="$TMP_DIR" sh "$TMP_DIR/starship-install.sh" --yes --bin-dir "$TMP_DIR/starship-bin"
-sudo install -Dm0755 "$TMP_DIR/starship-bin/starship" /usr/local/bin/starship
-
-# --bin 只获取可执行文件，不生成 ~/.fzf 或重复修改 Shell 初始化配置。
-echo "==> 安装或更新 fzf..."
-git clone --depth 1 https://github.com/junegunn/fzf.git "$TMP_DIR/fzf"
-bash "$TMP_DIR/fzf/install" --bin
-# 上游安装器可能链接到已安装的同版本文件，避免向该文件自身复制。
-if [ ! "$TMP_DIR/fzf/bin/fzf" -ef /usr/local/bin/fzf ]; then
-  sudo install -Dm0755 "$TMP_DIR/fzf/bin/fzf" /usr/local/bin/fzf
-fi
-
-# ==============================================================================
-# 安装或更新 zsh-completions
-# ==============================================================================
+# 4. 安装 zsh-completions
 echo "==> 安装或更新 zsh-completions..."
 if [ -d "$ZSH_COMPLETIONS_DIR/.git" ] && [ -d "$ZSH_COMPLETIONS_DIR/src" ]; then
-  # 仅允许快进更新，不覆盖本地修改或重写已有提交。
   git -C "$ZSH_COMPLETIONS_DIR" pull --ff-only
 elif [ -e "$ZSH_COMPLETIONS_DIR" ] || [ -L "$ZSH_COMPLETIONS_DIR" ]; then
   echo "错误: $ZSH_COMPLETIONS_DIR 已存在，但不是有效的 zsh-completions 仓库。"
@@ -209,9 +162,9 @@ else
 fi
 
 # ==============================================================================
-# 安装 Maple Mono NF CN 字体
+# 配置字体
 # ==============================================================================
-# 字体由脚本自行下载，因为 Maple Mono 没有 Ubuntu 软件包
+# 1. 安装 Maple Mono NF CN
 echo "==> 安装 Maple Mono NF CN 字体..."
 if [ "$(cat "$FONT_DIR/.version" 2>/dev/null)" = "$MAPLE_VERSION" ] &&
    [ -f "$FONT_DIR/MapleMono-NF-CN-Regular.ttf" ]; then
@@ -220,7 +173,6 @@ else
   curl -fsSL "$MAPLE_RELEASE_URL/$MAPLE_ZIP_NAME" -o "$TMP_DIR/$MAPLE_ZIP_NAME"
   curl -fsSL "$MAPLE_RELEASE_URL/$MAPLE_SHA_NAME" -o "$TMP_DIR/$MAPLE_SHA_NAME"
 
-  # 官方的 .sha256 文件里只有裸哈希、没有文件名，无法用 sha256sum -c 校验，改为手工比对
   EXPECTED_SHA="$(tr -d '[:space:]' < "$TMP_DIR/$MAPLE_SHA_NAME")"
   ACTUAL_SHA="$(sha256sum "$TMP_DIR/$MAPLE_ZIP_NAME" | cut -d' ' -f1)"
   if [ "$EXPECTED_SHA" != "$ACTUAL_SHA" ]; then
@@ -230,7 +182,6 @@ else
     exit 1
   fi
 
-  # 不假设 zip 内部的目录层级，按扩展名收集字体文件
   rm -rf "$TMP_DIR/maple"
   mkdir -p "$FONT_DIR" "$TMP_DIR/maple"
   unzip -oq "$TMP_DIR/$MAPLE_ZIP_NAME" -d "$TMP_DIR/maple"
@@ -238,24 +189,24 @@ else
     echo "错误: 字体包中未找到 MapleMono-NF-CN-Regular.ttf。"
     exit 1
   fi
-  # 验证解压结果后再替换旧版本，避免残留已改名的字体文件。
   rm -f "$FONT_DIR"/*.ttf
   find "$TMP_DIR/maple" -type f -name '*.ttf' -exec cp -f {} "$FONT_DIR/" \;
 
-  # 记录版本，下次运行时据此判断是否需要更新字体
   printf '%s\n' "$MAPLE_VERSION" > "$FONT_DIR/.version"
   echo "    ✓ $FONT_DIR ($MAPLE_VERSION)"
 fi
 
-# 安装字体匹配规则并刷新缓存，避免中文环境中被 Noto 替代。
+# 2. 配置字体匹配
 bash "$FONT_SETUP_SCRIPT" "$BACKUP_DIR"
 
 # ==============================================================================
-# 安装配置文件
+# 部署终端配置
 # ==============================================================================
+# 1. 创建配置目录
 echo "==> 安装配置文件..."
 mkdir -p "$CONFIG_DIR"
 
+# 2. 部署 Ghostty 配置
 if [ -d "$GHOSTTY_TARGET" ] && [ ! -L "$GHOSTTY_TARGET" ]; then
   echo "错误: $GHOSTTY_TARGET 是目录，无法安装 Ghostty 配置。"
   exit 1
@@ -275,6 +226,7 @@ else
   echo "    ✓ $GHOSTTY_TARGET"
 fi
 
+# 3. 部署 Starship 配置
 if [ -d "$STARSHIP_TARGET" ] && [ ! -L "$STARSHIP_TARGET" ]; then
   echo "错误: $STARSHIP_TARGET 是目录，无法安装 Starship 配置。"
   exit 1
@@ -293,14 +245,14 @@ else
   echo "    ✓ $STARSHIP_TARGET"
 fi
 
-# .zshrc 追加到用户已有配置尾部（不覆盖 marker 外的内容）
+# 4. 部署 zsh 配置
 if grep -Fq "$ZSH_MARKER_START" "$HOME/.zshrc" 2>/dev/null; then
   echo "    .zshrc 中已存在 Linux 配置，跳过。"
 else
   {
     echo ""
     echo "$ZSH_MARKER_START"
-    echo "# 以下内容由 Linux Mint shell 配置安装脚本自动追加"
+    echo "# 部署终端 Shell 配置"
     echo "# 删除方法: 移除从 >>> 到 <<< 之间的所有内容"
     cat "$ZSH_SOURCE"
     echo "$ZSH_MARKER_END"
@@ -309,8 +261,9 @@ else
 fi
 
 # ==============================================================================
-# 设置默认终端字体（Linux Mint Cinnamon 自带 GNOME Terminal）
+# 设置默认终端字体
 # ==============================================================================
+# 1. 设置字体与字号
 echo "==> 设置 GNOME Terminal 默认配置的字体..."
 if ! gsettings list-schemas | grep -Fx 'org.gnome.Terminal.ProfilesList' >/dev/null; then
   echo "错误: 未检测到 GNOME Terminal 配置；此字体设置步骤适用于 Mint Cinnamon，请在桌面会话中运行。" >&2
@@ -348,6 +301,7 @@ fi
 # ==============================================================================
 # 设置默认 Shell
 # ==============================================================================
+# 1. 切换默认 Shell
 ZSH_PATH="$(command -v zsh)"
 CURRENT_SHELL="$(getent passwd "$(id -un)" | cut -d: -f7)"
 if [ "$CURRENT_SHELL" = "$ZSH_PATH" ]; then
@@ -359,7 +313,7 @@ else
 fi
 
 # ==============================================================================
-# 完成
+# 完成配置
 # ==============================================================================
 echo ""
 echo "======================================"

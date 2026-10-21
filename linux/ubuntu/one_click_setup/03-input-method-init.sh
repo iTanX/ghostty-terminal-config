@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
-# ============================================================
-# Ubuntu 26.04 配置 Fcitx5 + Rime + 雾凇拼音 + Input Method Panel
-# 用法：bash 03-input-method-init.sh
-# 说明：脚本只处理可自动化部分；注销重登和 GUI 添加输入法需手动完成。
-# ============================================================
 
-# 任何命令失败立即退出，未定义变量报错，管道错误也捕获
+# ==============================================================================
+# 准备配置
+# ==============================================================================
 set -euo pipefail
 
 if [ "$(id -u)" -eq 0 ]; then
@@ -20,22 +17,24 @@ AUTOSTART_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/autostart/org.fcitx.Fcitx5.des
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-# ===== 步骤 1：安装软件包 =====
-echo "[1/5] 安装 Fcitx5、Rime 及依赖..."
+# ==============================================================================
+# 配置输入法
+# ==============================================================================
+# 1. 安装输入法
+echo "==> 安装 Fcitx5、Rime 及依赖..."
 sudo apt update
-# 按 APT 默认策略安装推荐依赖，包括 GTK/Qt 输入法前端。
-# fcitx5-rime 是 Rime 引擎适配器，必需
-# librime-plugin-lua 提供 Lua 支持，雾凇部分功能依赖
-sudo apt install -y \
-  fcitx5 fcitx5-rime fcitx5-config-qt git librime-plugin-lua \
-  curl unzip python3 libglib2.0-bin
 
-# ===== 步骤 2：设置默认输入法框架及登录自启动 =====
-echo "[2/5] 设置 Fcitx5 为默认输入法框架及登录自启动..."
-# 写入 im-config 的用户级配置，注销重登后生效
+# 1.1 安装依赖
+sudo apt install -y git curl unzip python3 libglib2.0-bin
+
+# 1.2 安装输入法软件包
+sudo apt install -y \
+  fcitx5 fcitx5-rime fcitx5-config-qt librime-plugin-lua
+
+# 2. 设置默认框架与自启动
+echo "==> 设置 Fcitx5 为默认输入法框架及登录自启动..."
 im-config -n fcitx5
 
-# 按 Fcitx 官方方式部署 XDG 自启动项，使用同一文件名，重复运行不会新增条目。
 if [ ! -f "$AUTOSTART_SOURCE" ]; then
   echo "错误：未找到 Fcitx5 启动文件：$AUTOSTART_SOURCE" >&2
   exit 1
@@ -47,11 +46,9 @@ else
   echo "已设置 Fcitx5 登录自启动：$AUTOSTART_FILE"
 fi
 
-# ===== 步骤 3：配置环境变量 =====
-echo "[3/5] 写入环境变量配置..."
+# 3. 配置输入法环境变量
+echo "==> 写入环境变量配置..."
 mkdir -p "$(dirname "$ENV_FILE")"
-# 注意：environment.d 格式要求不要写 export、不要加引号
-# 若文件已存在则不覆盖，避免冲掉用户自定义内容
 if [ -e "$ENV_FILE" ]; then
   echo "已存在 ${ENV_FILE}，跳过写入（如需修改请手动编辑）。"
 else
@@ -63,8 +60,7 @@ EOF
   echo "已写入 $ENV_FILE"
 fi
 
-# ===== 步骤 4：安装并启用 GNOME 输入法面板，修复 Wayland 候选框位置 =====
-echo "[4/5] 配置 Input Method Panel..."
+echo "==> 配置 Input Method Panel..."
 if command -v gnome-shell >/dev/null 2>&1; then
   KIMPANEL_UUID="kimpanel@kde.org"
   KIMPANEL_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions/$KIMPANEL_UUID"
@@ -85,7 +81,6 @@ PY
   then
     echo "Input Method Panel 已安装且兼容 GNOME $GNOME_MAJOR，跳过下载。"
   else
-    # 从 GNOME 官方目录选择当前 Shell 的兼容版本，避免装上仅支持新版 GNOME 的包。
     python3 - "$TMP_DIR/kimpanel.zip" "$GNOME_MAJOR" "$KIMPANEL_UUID" <<'PY'
 import json, sys
 from shutil import copyfileobj
@@ -104,8 +99,6 @@ PY
     gnome-extensions install --force "$TMP_DIR/kimpanel.zip"
   fi
 
-  # 新安装的扩展可能尚未被本次 Shell 会话识别，先保存启用状态供下次登录加载。
-  # 使用数组读写，保留其他扩展，并移除该扩展已有的禁用记录。
   python3 - "$KIMPANEL_UUID" <<'PY'
 import ast, json, subprocess, sys
 uuid = sys.argv[1]
@@ -140,23 +133,22 @@ else
   echo "未检测到 GNOME Shell，跳过 GNOME 专用的 Input Method Panel。"
 fi
 
-# ===== 步骤 5：安装雾凇拼音 =====
-echo "[5/5] 安装雾凇拼音..."
+# 4. 安装雾凇拼音
+echo "==> 安装雾凇拼音..."
 if [ -d "$RIME_DIR/.git" ]; then
-  # 已是 git 仓库：直接拉取更新，避免重复克隆
   echo "检测到已有雾凇拼音仓库，执行更新..."
   git -C "$RIME_DIR" pull --ff-only
 elif [ -e "$RIME_DIR" ]; then
-  # 目录存在但不是 git 仓库：直接删除后重新克隆（不备份）
   echo "检测到非 Git 仓库的 Rime 配置目录，删除后重新克隆..."
   rm -rf "$RIME_DIR"
   git clone --depth=1 https://github.com/iDvel/rime-ice.git "$RIME_DIR"
 else
-  # 全新安装
   git clone --depth=1 https://github.com/iDvel/rime-ice.git "$RIME_DIR"
 fi
 
-# ===== 后续手动步骤提示 =====
+# ==============================================================================
+# 完成配置
+# ==============================================================================
 cat <<'MSG'
 
 ============================================================

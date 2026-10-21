@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# 修复中文环境下 Ghostty 将 Maple Mono NF CN 匹配为 Noto 的问题。
-# install.sh 安装字体后自动调用；已有安装可单独运行，不更新软件包。
-# 可选参数：备份目录。
+# ==============================================================================
+# 准备配置
+# ==============================================================================
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,21 +11,28 @@ FONT_DIR="$HOME/.local/share/fonts/maple-mono-nf-cn"
 FONTCONFIG_SOURCE="$SCRIPT_DIR/fontconfig/99-maple-mono-nf-cn-ghostty.conf"
 FONTCONFIG_TARGET="$CONFIG_DIR/fontconfig/conf.d/99-maple-mono-nf-cn-ghostty.conf"
 
+# 1. 检查运行环境
 if [ "$(id -u)" -eq 0 ]; then
   echo "错误: 请使用普通用户运行本脚本，不要使用 sudo。" >&2
   exit 1
 fi
+
 for cmd in fc-cache fc-match; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     echo "错误: 缺少 $cmd，请先运行 install.sh 安装依赖。" >&2
     exit 1
   fi
 done
+
 if [ ! -f "$FONTCONFIG_SOURCE" ] || [ ! -f "$FONT_DIR/MapleMono-NF-CN-Regular.ttf" ]; then
   echo "错误: 缺少 Fontconfig 规则或 Maple Mono NF CN 字体，请先运行 install.sh。" >&2
   exit 1
 fi
 
+# ==============================================================================
+# 配置字体匹配
+# ==============================================================================
+# 1. 部署字体规则
 echo "==> 修复 Ghostty 的 Maple Mono NF CN 字体匹配..."
 if [ -d "$FONTCONFIG_TARGET" ] && [ ! -L "$FONTCONFIG_TARGET" ]; then
   echo "错误: $FONTCONFIG_TARGET 是目录，无法安装字体规则。" >&2
@@ -44,9 +51,11 @@ else
   cp "$FONTCONFIG_SOURCE" "$FONTCONFIG_TARGET"
   echo "    ✓ $FONTCONFIG_TARGET"
 fi
+
+# 2. 刷新字体缓存
 fc-cache -f "$FONT_DIR" >/dev/null
 
-# 显式指定语言，避免在 Codex 等 C.UTF-8 环境中漏掉中文桌面的错误匹配。
+# 3. 验证字体匹配
 for lang in zh-cn en; do
   for style in Regular Bold; do
     FONT_MATCH="$(fc-match -f '%{family}' "Maple Mono NF CN:spacing=100:lang=$lang:style=$style")"
