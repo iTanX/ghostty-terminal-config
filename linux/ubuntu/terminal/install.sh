@@ -229,7 +229,7 @@ else
   echo "    ✓ $FONT_DIR ($MAPLE_VERSION)"
 fi
 
-# 字体版本未变化时也执行，确保旧安装可以补上中文字体匹配修复和 Ptyxis 设置。
+# 字体版本未变化时也执行，确保旧安装可以补上中文字体匹配修复。
 bash "$FONT_SETUP_SCRIPT" "$BACKUP_DIR"
 
 # ==============================================================================
@@ -291,6 +291,36 @@ else
 fi
 
 # ==============================================================================
+# 设置默认终端字体（Ubuntu 自带 Ptyxis）
+# ==============================================================================
+PTYXIS_FONT="Maple Mono NF CN Regular 10"
+echo "==> 设置 Ubuntu 自带终端字体..."
+if ! gsettings list-schemas | grep -Fx 'org.gnome.Ptyxis' >/dev/null; then
+  echo "    未检测到 Ptyxis，跳过自带终端字体设置。"
+else
+  for key in font-name use-system-font; do
+    if [ "$(gsettings writable org.gnome.Ptyxis "$key")" != true ]; then
+      echo "错误: Ptyxis 的 $key 设置不可写，请检查桌面策略。" >&2
+      exit 1
+    fi
+  done
+
+  if [ "$(gsettings get org.gnome.Ptyxis font-name)" = "'$PTYXIS_FONT'" ] &&
+     [ "$(gsettings get org.gnome.Ptyxis use-system-font)" = false ]; then
+    echo "    Ptyxis 字体已是 $PTYXIS_FONT，跳过。"
+  else
+    gsettings set org.gnome.Ptyxis font-name "$PTYXIS_FONT"
+    gsettings set org.gnome.Ptyxis use-system-font false
+    if [ "$(gsettings get org.gnome.Ptyxis font-name)" != "'$PTYXIS_FONT'" ] ||
+       [ "$(gsettings get org.gnome.Ptyxis use-system-font)" != false ]; then
+      echo "错误: Ptyxis 字体设置未保存，请在当前用户的桌面终端中运行本脚本。" >&2
+      exit 1
+    fi
+    echo "    ✓ Ptyxis: $PTYXIS_FONT"
+  fi
+fi
+
+# ==============================================================================
 # 设置默认 Shell
 # ==============================================================================
 ZSH_PATH="$(command -v zsh)"
@@ -324,9 +354,6 @@ if [ -d "$BACKUP_DIR" ]; then
   if [ -e "$BACKUP_DIR/starship.toml" ] || [ -L "$BACKUP_DIR/starship.toml" ]; then
     echo "  rm -f $STARSHIP_TARGET"
     echo "  cp -a $BACKUP_DIR/starship.toml $STARSHIP_TARGET"
-  fi
-  if [ -f "$BACKUP_DIR/restore-ptyxis-font.sh" ]; then
-    echo "恢复自带终端字体: bash $BACKUP_DIR/restore-ptyxis-font.sh"
   fi
   echo ""
 fi

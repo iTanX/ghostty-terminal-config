@@ -26,7 +26,7 @@
 | `starship/starship.toml` | Starship 彩虹条提示符配置 | `~/.config/starship.toml` |
 | `zsh/.zshrc` | Ubuntu 版 zsh 配置 | 追加到 `~/.zshrc` 的受控标记块内 |
 | `install.sh` | Ubuntu 26.04 一键安装脚本 | 可在任意目录运行（自动定位配置） |
-| `configure-fonts.sh` | 设置字体匹配规则和 Ptyxis 字体，安装器自动调用，也可单独运行 | 当前用户的 Fontconfig / GSettings |
+| `configure-fonts.sh` | 设置字体匹配规则，安装器自动调用，也可单独运行 | 当前用户的 Fontconfig |
 | `fontconfig/99-maple-mono-nf-cn-ghostty.conf` | 保留明确指定的 Maple CN 字体优先级 | `~/.config/fontconfig/conf.d/` |
 
 配置目录遵循 `XDG_CONFIG_HOME`，未设置时使用 `~/.config`。Ptyxis 和 Ghostty 的默认字重均为 Regular；`eza` 等程序仍可为目录名请求粗体，Starship 彩虹条路径保持原有常规样式。
@@ -68,9 +68,9 @@ bash install.sh
 5. 首次克隆 zsh-completions 到 `~/.local/share/zsh-completions`，再次运行时执行 `git pull --ff-only`
 6. 从官方 GitHub Release 下载 Maple Mono NF CN 字体并校验完整性，安装到 `~/.local/share/fonts/maple-mono-nf-cn`
 7. 安装 Fontconfig 兼容规则，刷新缓存并验证中英文环境下均匹配 Maple CN
-8. 将 Ptyxis 的字体设为 `Maple Mono NF CN Regular 10`，并关闭“使用系统字体”
-9. 备份并安装 Ghostty（CN 字体、10 号）和 Starship 配置
-10. 将 Linux zsh 配置追加到 `~/.zshrc`
+8. 备份并安装 Ghostty（CN 字体、10 号）和 Starship 配置
+9. 将 Linux zsh 配置追加到 `~/.zshrc`
+10. 将 Ptyxis 的字体设为 `Maple Mono NF CN Regular 10`，并关闭“使用系统字体”
 11. 将当前用户的默认 Shell 切换为 zsh
 
 ### 3. 重新登录
@@ -164,13 +164,13 @@ fc-cache -f "$FONT_DIR"
 
 以下命令在本 README 所在目录（`linux/ubuntu/terminal/`）执行。
 
-先安装中文字体匹配规则并自动设置 Ptyxis 字体。此步骤也适用于已经安装 CN 字体、只需要补上修复的机器：
+先安装中文字体匹配规则。此步骤也适用于已经安装 CN 字体、只需要补上修复的机器：
 
 ```bash
 bash configure-fonts.sh
 ```
 
-已有字体规则和 Ptyxis 字体设置会先备份；未安装 Ptyxis 时跳过该应用的设置。字体匹配或 GSettings 保存失败时会报错，避免把未生效的设置当作成功。
+已有字体规则会先备份。Ptyxis 字体由 `install.sh` 设置，不备份原字体和字号；未安装 Ptyxis 时跳过该应用的设置。字体匹配或 GSettings 保存失败时会报错，避免把未生效的设置当作成功。
 
 ```bash
 BACKUP_DIR="$HOME/.config-backup/$(date +%Y%m%d_%H%M%S)"
@@ -271,7 +271,7 @@ zsh -lic 'alias ls; alias cat; whence -w y'
 - 每次对已有 zsh-completions 执行 `git pull --ff-only`
 - 字体目录中记录的版本与 `MAPLE_VERSION` 相同时跳过下载
 - 每次都会安装或核对 Fontconfig 规则、刷新字体缓存，并验证中文和英文环境的字体匹配
-- Ptyxis 字体已正确设置时跳过修改；需要修改时先保存旧值
+- Ptyxis 字体已正确设置时跳过修改；需要修改时直接设置，不备份旧值
 - Ghostty 和 Starship 配置内容相同时不会重复复制或备份
 - `~/.zshrc` 中存在 Linux 配置 marker 时不会再次追加
 - 默认 Shell 已是 zsh 时不会重复切换
@@ -286,7 +286,6 @@ zsh -lic 'alias ls; alias cat; whence -w y'
 ~/.config-backup/<时间戳>/ghostty-config
 ~/.config-backup/<时间戳>/starship.toml
 ~/.config-backup/<时间戳>/maple-mono-nf-cn-ghostty.conf
-~/.config-backup/<时间戳>/restore-ptyxis-font.sh
 ```
 
 恢复命令：
@@ -297,11 +296,7 @@ cp -a ~/.config-backup/<时间戳>/ghostty-config ~/.config/ghostty/config
 cp -a ~/.config-backup/<时间戳>/starship.toml ~/.config/starship.toml
 ```
 
-如果备份目录包含 `maple-mono-nf-cn-ghostty.conf`，可以将其恢复到 `~/.config/fontconfig/conf.d/99-maple-mono-nf-cn-ghostty.conf`。恢复原来的 Ptyxis 字体：
-
-```bash
-bash ~/.config-backup/<时间戳>/restore-ptyxis-font.sh
-```
+如果备份目录包含 `maple-mono-nf-cn-ghostty.conf`，可以将其恢复到 `~/.config/fontconfig/conf.d/99-maple-mono-nf-cn-ghostty.conf`。
 
 只会为确实被替换的配置创建对应备份文件。
 
