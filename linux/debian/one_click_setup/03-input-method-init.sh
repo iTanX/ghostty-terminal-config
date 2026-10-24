@@ -29,7 +29,7 @@ sudo apt install -y git curl unzip python3 libglib2.0-bin
 
 # 1.2 安装输入法软件包
 sudo apt install -y \
-  fcitx5 fcitx5-rime fcitx5-config-qt librime-plugin-lua
+  fcitx5 fcitx5-rime fcitx5-config-qt librime-plugin-lua im-config fcitx5-frontend-all
 
 # 2. 设置默认框架与自启动
 echo "==> 设置 Fcitx5 为默认输入法框架及登录自启动..."

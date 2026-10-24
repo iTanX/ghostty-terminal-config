@@ -56,10 +56,12 @@ fc-cache -f "$FONT_DIR" >/dev/null
 
 # 3. 验证字体匹配
 for lang in zh-cn en; do
-  FONT_MATCH="$(fc-match -f '%{family}' "Maple Mono NF CN:spacing=100:lang=$lang")"
-  if [ "$FONT_MATCH" != "Maple Mono NF CN" ]; then
-    echo "错误: $lang 环境字体匹配为 $FONT_MATCH，预期为 Maple Mono NF CN。" >&2
-    exit 1
-  fi
+  for style in Regular Bold; do
+    FONT_MATCH="$(fc-match -f '%{family}' "Maple Mono NF CN:spacing=100:lang=$lang:style=$style")"
+    if [ "$FONT_MATCH" != "Maple Mono NF CN" ]; then
+      echo "错误: $lang / $style 匹配为 $FONT_MATCH，预期为 Maple Mono NF CN。" >&2
+      exit 1
+    fi
+  done
 done
-echo "    ✓ 中英文环境均匹配 Maple Mono NF CN"
+echo "    ✓ 中文和英文环境的常规、粗体均匹配 Maple Mono NF CN"

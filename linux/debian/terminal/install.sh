@@ -19,6 +19,10 @@ ZSH_SOURCE="$SCRIPT_DIR/zsh/.zshrc"
 ZSH_COMPLETIONS_DIR="$HOME/.local/share/zsh-completions"
 ZSH_MARKER_START="# >>> linux-ghostty-terminal-config >>>"
 ZSH_MARKER_END="# <<< linux-ghostty-terminal-config <<<"
+GHOSTTY_KEY_URL="https://deb-free.griffo.io/EA0F721D231FDD3A0A17B9AC7808B4DD62C41256.asc"
+GHOSTTY_KEYRING="/etc/apt/keyrings/deb-free.griffo.io.gpg"
+GHOSTTY_SOURCE_LIST="/etc/apt/sources.list.d/deb-free.griffo.io.list"
+GHOSTTY_APT_SOURCE="deb [signed-by=$GHOSTTY_KEYRING] https://deb-free.griffo.io/apt trixie main"
 YAZI_KEY_URL="https://yazi-rs.github.io/builds/yazi-keyring.gpg"
 YAZI_KEYRING="/usr/share/keyrings/yazi-keyring.gpg"
 YAZI_SOURCE_LIST="/etc/apt/sources.list.d/yazi.list"
@@ -46,11 +50,19 @@ if [ ! -r /etc/os-release ]; then
 fi
 
 . /etc/os-release
-if [ "${ID:-}" != "ubuntu" ] || [ "${VERSION_ID:-}" != "26.04" ]; then
-  echo "错误: 本脚本仅支持 Ubuntu 26.04 LTS（Ghostty 官方软件包自 26.04 起提供）。"
+if [ "${ID:-}" != "debian" ] || [ "${VERSION_ID:-}" != "13" ] || [ "${VERSION_CODENAME:-}" != "trixie" ]; then
+  echo "错误: 本脚本仅支持 Debian 13（Trixie）GNOME 桌面版。"
   echo "当前系统: ${PRETTY_NAME:-未知}"
   exit 1
 fi
+
+case "$(dpkg --print-architecture)" in
+  amd64|arm64) ;;
+  *)
+    echo "错误: Ghostty 和 Yazi 的安装配置仅支持 amd64、arm64 架构。" >&2
+    exit 1
+    ;;
+esac
 
 if ! command -v sudo &> /dev/null; then
   echo "错误: 未检测到 sudo，请先为当前用户配置 sudo 权限。"
@@ -85,9 +97,6 @@ echo ""
 echo "==> 安装 APT 基础依赖..."
 sudo apt-get update
 sudo apt-get install -y ca-certificates curl gnupg git file fontconfig libglib2.0-bin unzip
-sudo apt-get install -y software-properties-common
-sudo add-apt-repository -y --no-update universe
-sudo apt-get update
 
 # 2. 安装终端工具与插件
 echo "==> 安装终端工具和 zsh 插件..."
@@ -99,8 +108,34 @@ sudo apt-get install -y \
   zsh-autosuggestions \
   zsh-syntax-highlighting \
   starship \
-  fzf \
-  ghostty
+  fzf
+
+# 2.1 安装 Ghostty
+echo "==> 配置 Ghostty 软件源..."
+curl -fsSL "$GHOSTTY_KEY_URL" -o "$TMP_DIR/ghostty.asc"
+gpg --batch --dearmor --output "$TMP_DIR/ghostty.gpg" "$TMP_DIR/ghostty.asc"
+sudo install -d -m 0755 /etc/apt/keyrings
+if ! sudo cmp -s "$TMP_DIR/ghostty.gpg" "$GHOSTTY_KEYRING"; then
+  sudo install -m 0644 "$TMP_DIR/ghostty.gpg" "$GHOSTTY_KEYRING"
+  echo "    ✓ $GHOSTTY_KEYRING"
+else
+  echo "    Ghostty 密钥已是最新，跳过。"
+fi
+
+printf '%s\n' "$GHOSTTY_APT_SOURCE" > "$TMP_DIR/ghostty.list"
+if [ -e "$GHOSTTY_SOURCE_LIST" ]; then
+  if ! sudo cmp -s "$TMP_DIR/ghostty.list" "$GHOSTTY_SOURCE_LIST"; then
+    echo "错误: $GHOSTTY_SOURCE_LIST 已存在且内容不同。"
+    echo "请先检查该文件，确认无用后删除，再重新运行本脚本。"
+    exit 1
+  fi
+  echo "    Ghostty 软件源已存在，跳过。"
+else
+  sudo install -m 0644 "$TMP_DIR/ghostty.list" "$GHOSTTY_SOURCE_LIST"
+  echo "    ✓ $GHOSTTY_SOURCE_LIST"
+fi
+sudo apt-get update
+sudo apt-get install -y ghostty
 
 # 3. 安装 Yazi
 
@@ -248,31 +283,38 @@ fi
 # 设置默认终端字体
 # ==============================================================================
 # 1. 设置字体与字号
-PTYXIS_FONT="Maple Mono NF CN Regular 10"
-echo "==> 设置 Ubuntu 自带终端字体..."
-if ! gsettings list-schemas | grep -Fx 'org.gnome.Ptyxis' >/dev/null; then
-  echo "    未检测到 Ptyxis，跳过自带终端字体设置。"
-else
-  for key in font-name use-system-font; do
-    if [ "$(gsettings writable org.gnome.Ptyxis "$key")" != true ]; then
-      echo "错误: Ptyxis 的 $key 设置不可写，请检查桌面策略。" >&2
-      exit 1
-    fi
-  done
-
-  if [ "$(gsettings get org.gnome.Ptyxis font-name)" = "'$PTYXIS_FONT'" ] &&
-     [ "$(gsettings get org.gnome.Ptyxis use-system-font)" = false ]; then
-    echo "    Ptyxis 字体已是 $PTYXIS_FONT，跳过。"
-  else
-    gsettings set org.gnome.Ptyxis font-name "$PTYXIS_FONT"
-    gsettings set org.gnome.Ptyxis use-system-font false
-    if [ "$(gsettings get org.gnome.Ptyxis font-name)" != "'$PTYXIS_FONT'" ] ||
-       [ "$(gsettings get org.gnome.Ptyxis use-system-font)" != false ]; then
-      echo "错误: Ptyxis 字体设置未保存，请在当前用户的桌面终端中运行本脚本。" >&2
-      exit 1
-    fi
-    echo "    ✓ Ptyxis: $PTYXIS_FONT"
+echo "==> 设置 GNOME Terminal 默认配置的字体..."
+if ! gsettings list-schemas | grep -Fx 'org.gnome.Terminal.ProfilesList' >/dev/null; then
+  echo "错误: 未检测到 GNOME Terminal 配置；请在 Debian GNOME 的默认终端中运行。" >&2
+  exit 1
+fi
+TERMINAL_PROFILE="$(gsettings get org.gnome.Terminal.ProfilesList default)"
+TERMINAL_PROFILE="${TERMINAL_PROFILE#\'}"
+TERMINAL_PROFILE="${TERMINAL_PROFILE%\'}"
+if [[ ! "$TERMINAL_PROFILE" =~ ^[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}$ ]]; then
+  echo "错误: GNOME Terminal 默认配置 ID 无效，请先打开终端创建默认配置。" >&2
+  exit 1
+fi
+TERMINAL_SETTINGS="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$TERMINAL_PROFILE/"
+TERMINAL_FONT="Maple Mono NF CN Regular 10"
+for key in font use-system-font; do
+  if [ "$(gsettings writable "$TERMINAL_SETTINGS" "$key")" != true ]; then
+    echo "错误: GNOME Terminal 的 $key 设置不可写，请检查桌面策略。" >&2
+    exit 1
   fi
+done
+if [ "$(gsettings get "$TERMINAL_SETTINGS" font)" = "'$TERMINAL_FONT'" ] &&
+   [ "$(gsettings get "$TERMINAL_SETTINGS" use-system-font)" = false ]; then
+  echo "    GNOME Terminal 字体已是 $TERMINAL_FONT，跳过。"
+else
+  gsettings set "$TERMINAL_SETTINGS" font "$TERMINAL_FONT"
+  gsettings set "$TERMINAL_SETTINGS" use-system-font false
+  if [ "$(gsettings get "$TERMINAL_SETTINGS" font)" != "'$TERMINAL_FONT'" ] ||
+     [ "$(gsettings get "$TERMINAL_SETTINGS" use-system-font)" != false ]; then
+    echo "错误: GNOME Terminal 字体设置未保存，请在当前用户的桌面会话中运行。" >&2
+    exit 1
+  fi
+  echo "    ✓ GNOME Terminal = $TERMINAL_FONT"
 fi
 
 # ==============================================================================
@@ -298,7 +340,7 @@ echo " 安装完成！"
 echo "======================================"
 echo ""
 echo "请重新打开终端（或注销后重新登录）生效。"
-echo "默认字体: Ptyxis = Maple Mono NF CN Regular 10；Ghostty = Maple Mono NF CN，10 号。"
+echo "默认字体: Ghostty、GNOME Terminal = Maple Mono NF CN Regular，10 号。"
 echo "若 Ghostty 仍在运行，请完全退出旧进程后重新打开。"
 echo ""
 if [ -d "$BACKUP_DIR" ]; then
