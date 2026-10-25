@@ -1,0 +1,19 @@
+1. Chrome
+2. Motrix
+3. 绿联云客户端：必须先设置好 wine prefix，包括字体、环境变量、DPI（4K 对应 192）后再安装 exe，不然不生效。
+WINEDLLOVERRIDES="powershell.exe=d"
+WINE_DPI_SCALE="2"
+截图使用火焰截图，使用下面的方法先修复：
+大家好。如果您不想切换 X11，这里还有另一种解决方案。打开终端并运行以下命令：
+QT_QPA_PLATFORM=wayland flameshot gui
+如果弹出系统消息询问“共享屏幕？”，请点击“共享”按钮。
+如果上述命令有效，请将其设置为永久键盘快捷键：
+前往“设置”→“键盘”→“查看和自定义快捷键”。
+向下滚动至“自定义快捷键”。
+添加一个新的快捷键：
+名称：Flameshot Wayland；
+命令：sh -c "QT_QPA_PLATFORM=wayland flameshot gui"或sh -c "flameshot gui --raw | wl-copy"
+按键：例如 PrtSc（您可能需要先禁用默认的屏幕截图快捷键）。
+实测第二个命令好用
+
+美化：sudo apt install gnome-shell-extension-manager gnome-tweaks
