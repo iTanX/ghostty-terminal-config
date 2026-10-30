@@ -1,0 +1,18 @@
+[Unit]
+Description=Prepare Bluetooth wake permissions before system sleep
+# 蓝牙服务已启动时先等待它就绪，再于实际睡眠流程开始前修复唤醒权限。
+# After 仅规定执行顺序，不会拉起未运行的蓝牙服务。
+After=bluetooth.service
+Before=sleep.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I /usr/local/lib/bluetooth-wakeup-systemd/fix-bluetooth-wakeup.py
+# 服务整体硬超时；应大于 Python 中的 DEVICE_CHECK_BUDGET_SECONDS，
+# 为适配器 sysfs 操作和设备列表查询留出余量。
+TimeoutStartSec=30s
+# 不使用 RemainAfterExit：每次睡眠都需要重新执行。
+# 不使用 Requires 绑定睡眠目标：检查失败记日志，但不强制取消睡眠。
+
+[Install]
+WantedBy=sleep.target
