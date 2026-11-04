@@ -48,6 +48,10 @@ EXTENSIONS=(
     # 防休眠和应用托盘。
     caffeine@patapon.info
     status-tray@keithvassallo.com
+    # 锁屏远程桌面。
+    allowlockedremotedesktop@kamens.us
+    # 通过 ddcutil 控制显示器亮度和音量。
+    monitor-brightness-volume@ailin.nemui
 )
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -60,7 +64,7 @@ progress "GNOME 扩展 / 刷新软件索引"
 sudo apt-get update
 
 # 2. 安装依赖
-sudo apt-get install -y ca-certificates python3 libglib2.0-bin
+sudo apt-get install -y ca-certificates python3 libglib2.0-bin ddcutil
 
 # 3. 安装扩展管理器
 progress "GNOME 扩展 / 安装扩展管理器"
