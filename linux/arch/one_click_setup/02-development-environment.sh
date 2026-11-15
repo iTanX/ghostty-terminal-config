@@ -21,63 +21,71 @@ fi
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
+# 1. 检查运行环境
+if [ ! -r /etc/os-release ]; then
+    echo "错误：无法识别当前操作系统。" >&2
+    exit 1
+fi
+. /etc/os-release
+if [ "${ID:-}" != "arch" ] || [ "$(uname -m)" != "x86_64" ]; then
+    echo "错误：本脚本仅支持 x86_64 架构的 Arch Linux。" >&2
+    exit 1
+fi
+
+MISE_SOURCE="$SCRIPT_DIR/assets/mise.toml"
+MISE_TARGET="${XDG_CONFIG_HOME:-$HOME/.config}/mise/config.toml"
+if [ ! -f "$MISE_SOURCE" ]; then
+    echo "错误：未找到 mise 配置文件：$MISE_SOURCE" >&2
+    exit 1
+fi
+
 # ==============================================================================
 # 配置开发工具链
 # ==============================================================================
-# 1. 安装 Python 命令入口
-progress "AI 开发环境 / python-is-python3"
-sudo apt install -y python-is-python3
+# 1. 安装 mise
+progress "开发环境 / mise"
 
-# 2. 安装 uv
-progress "AI 开发环境 / uv"
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# 1.1 安装依赖
+sudo pacman -Syu --needed --noconfirm ca-certificates curl git unzip
 
-export PATH="$HOME/.local/bin:$PATH"
+# 1.2 安装软件包
+sudo pacman -S --needed --noconfirm mise
 
-# 3. 安装 Node.js
-progress "AI 开发环境 / Node.js"
-
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.7/install.sh | PROFILE="$HOME/.zshrc" bash
-
-. "$HOME/.nvm/nvm.sh"
-
-nvm install 24
-
-node -v
-
-npm -v
-
-# 4. 安装 SDKMAN
-progress "Java 开发环境 / SDKMAN"
-
-# 4.1 安装依赖
-sudo apt install -y zip unzip
-
-# 4.2 安装并初始化 SDKMAN
-curl -s "https://get.sdkman.io" | zsh
-
-set +u
-. "$HOME/.sdkman/bin/sdkman-init.sh"
-
-SDKMAN_CONFIG="$HOME/.sdkman/etc/config"
-if grep -q '^sdkman_auto_answer=' "$SDKMAN_CONFIG"; then
-    sed -i 's/^sdkman_auto_answer=.*/sdkman_auto_answer=true/' "$SDKMAN_CONFIG"
+# 2. 部署 mise 配置
+progress "开发环境 / mise config.toml"
+mkdir -p "$(dirname "$MISE_TARGET")"
+if [ -d "$MISE_TARGET" ] && [ ! -L "$MISE_TARGET" ]; then
+    echo "错误：$MISE_TARGET 是目录，无法写入 mise 配置。" >&2
+    exit 1
+fi
+if [ -f "$MISE_TARGET" ] && cmp -s "$MISE_SOURCE" "$MISE_TARGET"; then
+    echo "mise 配置已是最新，跳过复制。"
 else
-    printf '\nsdkman_auto_answer=true\n' >> "$SDKMAN_CONFIG"
+    if [ -e "$MISE_TARGET" ] || [ -L "$MISE_TARGET" ]; then
+        MISE_BACKUP_DIR="$HOME/.config-backup/$(date +%Y%m%d_%H%M%S)"
+        mkdir -p "$MISE_BACKUP_DIR"
+        cp -a "$MISE_TARGET" "$MISE_BACKUP_DIR/mise-config.toml"
+        rm -f "$MISE_TARGET"
+        echo "已备份原 mise 配置：$MISE_BACKUP_DIR/mise-config.toml"
+    fi
+    cp "$MISE_SOURCE" "$MISE_TARGET"
 fi
 
-# 5. 安装 JDK
-progress "Java 开发环境 / JDK 25"
-sdk install java 25-tem
-sdk default java 25-tem
+# 3. 安装开发工具
+progress "开发环境 / Python 3.14、uv、Node.js 24、Temurin JDK 25、Maven 3.9"
+mise --cd "$HOME" --yes install
 
-# 6. 安装 Maven
-progress "Java 开发环境 / Maven 3.9.16"
-sdk install maven 3.9.16
-sdk default maven 3.9.16
-set -u
+# 4. 初始化 Shell 环境
+progress "开发环境 / mise ZSH"
+if ! grep -Fxq 'eval "$(mise activate zsh)"' "$HOME/.zshrc" 2>/dev/null; then
+    printf '\n# 初始化 mise 开发工具环境\neval "$(mise activate zsh)"\n' >> "$HOME/.zshrc"
+fi
 
-# 6.1 部署 Maven 配置
+# 5. 启用工具自动更新
+progress "开发环境 / 每 24 小时检查工具更新"
+mise --cd "$HOME" --yes bootstrap services apply
+
+# 6. 部署 Maven 配置
 progress "Java 开发环境 / Maven settings.xml"
 SETTINGS_SOURCE="$SCRIPT_DIR/assets/settings.xml"
 SETTINGS_TARGET="$HOME/.m2/settings.xml"
@@ -104,11 +112,11 @@ cp "$SETTINGS_SOURCE" "$SETTINGS_TARGET"
 # ==============================================================================
 # 1. 安装 Claude
 progress "AI 工具 / Claude"
-npm install -g @anthropic-ai/claude-code@latest
+mise --cd "$HOME" exec -- npm install -g @anthropic-ai/claude-code@latest
 
 # 2. 安装 Codex
 progress "AI 工具 / Codex"
-npm install -g @openai/codex
+mise --cd "$HOME" exec -- npm install -g @openai/codex
 
 # 3. 建立配置链接
 progress "AI 配置 / 建立 AGENTS.md 链接"

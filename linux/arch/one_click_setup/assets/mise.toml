@@ -1,0 +1,11 @@
+# 开发工具版本与自动更新
+[tools]
+python = { version = "3.14", auto_update = "24h" }
+uv = { version = "latest", auto_update = "24h" }
+node = { version = "24", auto_update = "24h" }
+java = { version = "temurin-25", auto_update = "24h" }
+"aqua:apache/maven" = { version = "3.9", auto_update = "24h" }
+
+# 定期检查开发工具更新
+[bootstrap.services.mise-tool-update]
+builtin = "tool-update"

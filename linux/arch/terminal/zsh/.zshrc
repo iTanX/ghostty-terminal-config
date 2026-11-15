@@ -20,8 +20,7 @@ setopt hist_ignore_space
 # ==============================================================================
 # 扩展 zsh 的 Tab 补全候选列表，支持更多命令的参数补全
 # 使用方法: 输入命令后按 Tab 键
-# 注意: zsh-completions 安装在 ~/.local/share，fpath 必须在 compinit 之前
-fpath=(~/.local/share/zsh-completions/src $fpath)
+# 注意: zsh-completions 安装在 /usr/share/zsh/site-functions，由默认 fpath 加载
 autoload -Uz compinit && compinit -u
 # Tab 补全时显示候选菜单，连续按 Tab 可用光标在列表中移动选择
 zstyle ':completion:*' menu select
@@ -81,14 +80,14 @@ function y() {
 # 根据历史命令在光标后显示灰色建议
 # 使用方法: 输入时自动出现灰色提示，按 → 或 Ctrl+F 接受
 # 注意: 依赖历史记录，上面的 HISTFILE 配置不能少
-source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 # ==============================================================================
 # zsh-syntax-highlighting | 语法高亮
 # ==============================================================================
 # 命令输入时实时着色：存在的命令绿色，不存在的红色，字符串高亮等
 # 注意: 官方要求必须是最后一个被 source 的插件，否则无法正确高亮其他插件的命令
-source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
 # ==============================================================================
 # 快捷键
@@ -111,6 +110,6 @@ alias lta="eza --tree --icons --group-directories-first --sort=name --level=2 --
 # ==============================================================================
 # bat | 替代 cat，支持语法高亮
 # ==============================================================================
-# 使用方法: cat 文件名（实际调用 batcat）
+# 使用方法: cat 文件名（实际调用 bat）
 # 注意: --paging=never 禁用分页，--style=plain 去掉行号等装饰，只保留语法高亮
-alias cat="batcat --paging=never --style=plain"
+alias cat="bat --paging=never --style=plain"
