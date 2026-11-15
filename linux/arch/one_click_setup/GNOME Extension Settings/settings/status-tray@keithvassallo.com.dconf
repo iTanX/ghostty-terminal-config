@@ -1,0 +1,14 @@
+[/]
+app-order=[':1.242', 'executable:/opt/QQ/qq', 'wechat', ':1.300', 'Sunshine', 'executable:/opt/xyz.jericx.desktop.syncclipboard/SyncClipboard.Desktop.Default', 'ChatGPT', 'magpie', 'Org.Localsend.Localsend App', 'Motrix_status_icon_1', 'Snipaste', ':1.159']
+click-action='activate'
+disabled-apps=@as []
+icon-effect-overrides=@a{ss} {}
+icon-fallback-overrides=@as []
+icon-lock-overrides=@as []
+icon-mode='original'
+icon-overrides=@a{ss} {}
+overflow-enabled=false
+overflow-mode='strip'
+overflow-strip-width=10
+panel-position='right'
+title-aliases={'Org.Localsend.Localsend App': 'Org.Localsend.Localsend App'}

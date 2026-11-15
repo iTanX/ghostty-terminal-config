@@ -1,0 +1,79 @@
+{
+  "created_at": "2026-11-15T19:54:54.539756+08:00",
+  "gnome_shell": "GNOME Shell 48.7",
+  "scope": "仅备份当时已启用且有显式保存配置的 6 个扩展；排除使用默认值、无独立设置及已禁用的扩展。启用清单仅包含这 6 个扩展。",
+  "extensions": [
+    {
+      "uuid": "dash-to-panel@jderose9.github.com",
+      "name": "Dash to Panel",
+      "version": 74,
+      "settings": [
+        {
+          "path": "/org/gnome/shell/extensions/dash-to-panel/",
+          "file": "settings/dash-to-panel@jderose9.github.com.dconf",
+          "bytes": 548
+        }
+      ]
+    },
+    {
+      "uuid": "tiling-assistant@leleat-on-github",
+      "name": "Tiling Assistant",
+      "version": 56,
+      "settings": [
+        {
+          "path": "/org/gnome/shell/extensions/tiling-assistant/",
+          "file": "settings/tiling-assistant@leleat-on-github.dconf",
+          "bytes": 1521
+        }
+      ]
+    },
+    {
+      "uuid": "clipboard-indicator@tudmotu.com",
+      "name": "Clipboard Indicator",
+      "version": 72,
+      "settings": [
+        {
+          "path": "/org/gnome/shell/extensions/clipboard-indicator/",
+          "file": "settings/clipboard-indicator@tudmotu.com.dconf",
+          "bytes": 462
+        }
+      ]
+    },
+    {
+      "uuid": "blur-my-shell@aunetx",
+      "name": "Blur my Shell",
+      "version": 78,
+      "settings": [
+        {
+          "path": "/org/gnome/shell/extensions/blur-my-shell/",
+          "file": "settings/blur-my-shell@aunetx.dconf",
+          "bytes": 644
+        }
+      ]
+    },
+    {
+      "uuid": "caffeine@patapon.info",
+      "name": "Caffeine",
+      "version": 61,
+      "settings": [
+        {
+          "path": "/org/gnome/shell/extensions/caffeine/",
+          "file": "settings/caffeine@patapon.info.dconf",
+          "bytes": 87
+        }
+      ]
+    },
+    {
+      "uuid": "status-tray@keithvassallo.com",
+      "name": "Status Tray",
+      "version": 34,
+      "settings": [
+        {
+          "path": "/org/gnome/shell/extensions/status-tray/",
+          "file": "settings/status-tray@keithvassallo.com.dconf",
+          "bytes": 612
+        }
+      ]
+    }
+  ]
+}

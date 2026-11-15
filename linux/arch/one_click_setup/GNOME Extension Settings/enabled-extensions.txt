@@ -1,0 +1,6 @@
+dash-to-panel@jderose9.github.com
+tiling-assistant@leleat-on-github
+clipboard-indicator@tudmotu.com
+blur-my-shell@aunetx
+caffeine@patapon.info
+status-tray@keithvassallo.com
