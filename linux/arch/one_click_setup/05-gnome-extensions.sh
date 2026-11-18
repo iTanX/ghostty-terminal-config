@@ -55,6 +55,10 @@ EXTENSIONS=(
     # 通过 ddcutil 控制显示器亮度和音量。
     monitor-brightness-volume@ailin.nemui
 )
+# 在快捷设置的电源菜单中添加中文注销项。
+if [[ "$GNOME_MAJOR" = 50 || "$GNOME_MAJOR" = 51 ]]; then
+    EXTENSIONS+=(gnome-shell-extension-logout-in-power-menu)
+fi
 # 隐藏快捷设置中的夜灯按钮。
 if [ "$GNOME_MAJOR" = 51 ]; then
     EXTENSIONS+=(hide-night-light@frankchan)
@@ -103,6 +107,10 @@ source_repositories = {
     'monitor-brightness-volume@ailin.nemui': (
         'https://github.com/FC-GNOME-EXTENSIONS/gnome-shell-extension-monitor-brightness-volume',
         ['--extra-source=js', '--extra-source=LICENSE', '--extra-source=README.md'],
+    ),
+    'gnome-shell-extension-logout-in-power-menu': (
+        'https://github.com/FC-GNOME-EXTENSIONS/gnome-shell-extension-logout-in-power-menu.git',
+        [],
     ),
     'hide-night-light@frankchan': (
         'https://github.com/FC-GNOME-EXTENSIONS/gnome-shell-extension-hide-night-light.git',
@@ -179,6 +187,9 @@ def get(key):
 for key in ('enabled-extensions', 'disabled-extensions'):
     values = get(key)
     if key == 'enabled-extensions':
+        # 用中文版替换原版的启用项，避免出现两个注销按钮。
+        if 'gnome-shell-extension-logout-in-power-menu' in extensions:
+            values = [uuid for uuid in values if uuid != 'logout-in-power-menu@codegod100.github.io']
         values += [uuid for uuid in extensions if uuid not in values]
     else:
         values = [uuid for uuid in values if uuid not in extensions]
