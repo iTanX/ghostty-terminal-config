@@ -55,6 +55,10 @@ EXTENSIONS=(
     # 通过 ddcutil 控制显示器亮度和音量。
     monitor-brightness-volume@ailin.nemui
 )
+# 隐藏快捷设置中的夜灯按钮。
+if [ "$GNOME_MAJOR" = 51 ]; then
+    EXTENSIONS+=(hide-night-light@frankchan)
+fi
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
@@ -94,13 +98,22 @@ uuid, major, destination, temporary = sys.argv[1:]
 def compatible(metadata):
     return metadata.get('uuid') == uuid and major in metadata.get('shell-version', [])
 
-# 从源码构建并安装亮度和音量扩展。
-if uuid == 'monitor-brightness-volume@ailin.nemui':
-    source = Path(temporary) / 'monitor-brightness-volume'
-    subprocess.run([
-        'git', 'clone', '--depth', '1', '--branch', 'main',
+# 从源码构建并安装扩展。
+source_repositories = {
+    'monitor-brightness-volume@ailin.nemui': (
         'https://github.com/FC-GNOME-EXTENSIONS/gnome-shell-extension-monitor-brightness-volume',
-        str(source),
+        ['--extra-source=js', '--extra-source=LICENSE', '--extra-source=README.md'],
+    ),
+    'hide-night-light@frankchan': (
+        'https://github.com/FC-GNOME-EXTENSIONS/gnome-shell-extension-hide-night-light.git',
+        [],
+    ),
+}
+if uuid in source_repositories:
+    repository, pack_options = source_repositories[uuid]
+    source = Path(temporary) / uuid
+    subprocess.run([
+        'git', 'clone', '--depth', '1', '--branch', 'main', repository, str(source),
     ], check=True)
     metadata = json.loads((source / 'metadata.json').read_text())
     if not compatible(metadata):
@@ -108,14 +121,13 @@ if uuid == 'monitor-brightness-volume@ailin.nemui':
     output = source / 'dist'
     output.mkdir()
     subprocess.run([
-        'gnome-extensions', 'pack', '--force', '--extra-source=js',
-        '--extra-source=LICENSE', '--extra-source=README.md',
+        'gnome-extensions', 'pack', '--force', *pack_options,
         '--out-dir=' + str(output), str(source),
     ], check=True)
     archive = output / (uuid + '.shell-extension.zip')
     subprocess.run(['gnome-extensions', 'install', '--force', str(archive)], check=True)
     rmtree(source)
-    print('亮度和音量扩展已安装，临时源码和安装包已清理。')
+    print(f'{uuid} 已安装，临时源码和安装包已清理。')
     sys.exit(0)
 
 for base in (Path(destination), Path('/usr/share/gnome-shell/extensions')):
