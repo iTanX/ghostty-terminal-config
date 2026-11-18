@@ -4,13 +4,21 @@
 import json
 import os
 from pathlib import Path
+import socket
+import struct
 import subprocess
 import sys
 import time
 
 
-# Linux 蓝牙管理接口定义的 LL Privacy 功能 UUID，与设备地址或型号无关。
-LL_PRIVACY_UUID = "15c0a148-c273-11ea-b3de-0242ac130004"
+# Linux Bluetooth MGMT 的控制器信息命令、事件和状态位。
+MGMT_READ_INFO = 0x0004
+MGMT_COMMAND_COMPLETE = 0x0001
+MGMT_COMMAND_STATUS = 0x0002
+MGMT_LL_PRIVACY = 1 << 22
+MGMT_HEADER = struct.Struct("<HHH")
+MGMT_COMMAND_RESULT = struct.Struct("<HB")
+MGMT_INFO_SETTINGS = struct.Struct("<6xBHII")
 
 # D-Bus 自身超时略短于进程超时，为命令返回错误留出时间。
 DBUS_TIMEOUT_SECONDS = 2
@@ -22,8 +30,6 @@ DEVICE_CHECK_BUDGET_SECONDS = 20
 DEVICE_CALL_COUNT = 2
 DEVICE_OPERATION_BUDGET_SECONDS = DEVICE_CALL_COUNT * COMMAND_TIMEOUT_SECONDS
 RETRY_BUDGET_SECONDS = RETRY_INTERVAL_SECONDS + DEVICE_OPERATION_BUDGET_SECONDS
-# 安装后验证 BlueZ 实验功能状态时，为初始化保留独立的重试窗口。
-PRIVACY_CHECK_ATTEMPTS = 5
 
 
 def log(message):
@@ -129,39 +135,67 @@ def enable_devices():
     return errors
 
 
+def read_controller_settings(index):
+    """读取 MGMT 控制器支持的设置和当前生效的设置。"""
+    deadline = time.monotonic() + COMMAND_TIMEOUT_SECONDS
+    with socket.socket(socket.AF_BLUETOOTH, socket.SOCK_RAW, socket.BTPROTO_HCI) as control:
+        control.bind((socket.HCI_DEV_NONE, socket.HCI_CHANNEL_CONTROL))
+        control.settimeout(COMMAND_TIMEOUT_SECONDS)
+        control.sendall(MGMT_HEADER.pack(MGMT_READ_INFO, index, 0))
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("等待控制器信息超时")
+            control.settimeout(remaining)
+            reply = control.recv(1024)
+            event, controller, size = MGMT_HEADER.unpack_from(reply)
+            if controller != index or event not in (MGMT_COMMAND_COMPLETE, MGMT_COMMAND_STATUS):
+                continue
+            payload = reply[MGMT_HEADER.size:]
+            if len(payload) != size:
+                raise RuntimeError("控制器信息响应长度不符")
+            command, status = MGMT_COMMAND_RESULT.unpack_from(payload)
+            if command != MGMT_READ_INFO:
+                continue
+            if status:
+                raise RuntimeError(f"读取控制器信息失败（MGMT 状态 0x{status:02x}）")
+            if event == MGMT_COMMAND_COMPLETE:
+                _, _, supported, current = MGMT_INFO_SETTINGS.unpack_from(
+                    payload, MGMT_COMMAND_RESULT.size
+                )
+                return supported, current
+
+
 def verify_ll_privacy():
-    """查询 BlueZ 已成功启用的实验功能，验证所有已枚举控制器的 LL Privacy。"""
-    errors = {}
-    for attempt in range(PRIVACY_CHECK_ATTEMPTS):
-        errors = {}
+    controllers = sorted(
+        node.name for node in Path("/sys/class/bluetooth").glob("hci*")
+        if node.name[3:].isdigit()
+    )
+    if not controllers:
+        log("未发现蓝牙控制器，无法验证 LL Privacy。")
+        return 1
+    failed = False
+    for name in controllers:
         try:
-            adapters = {path: interfaces["org.bluez.Adapter1"]
-                        for path, interfaces in objects().items()
-                        if "org.bluez.Adapter1" in interfaces}
-            if not adapters:
-                errors["控制器"] = "未发现蓝牙控制器，无法验证 LL Privacy"
-            for path, properties in adapters.items():
-                features = value(properties, "ExperimentalFeatures", [])
-                if LL_PRIVACY_UUID not in [feature.lower() for feature in features]:
-                    errors[path] = "BlueZ 未报告 LL Privacy 已开启；请检查硬件支持与蓝牙服务日志"
-        except (OSError, RuntimeError, ValueError, KeyError, IndexError,
-                subprocess.TimeoutExpired) as error:
-            errors["BlueZ"] = str(error)
-        if not errors:
-            log("LL Privacy 验证通过：所有已枚举控制器均已启用。")
-            return 0
-        if attempt < PRIVACY_CHECK_ATTEMPTS - 1:
-            time.sleep(RETRY_INTERVAL_SECONDS)
-    for target, error in errors.items():
-        log(f"LL Privacy 验证失败：{target}：{error}")
-    return 1
+            supported, current = read_controller_settings(int(name[3:]))
+        except (OSError, RuntimeError, struct.error) as error:
+            log(f"{name}：无法读取 LL Privacy 状态：{error}")
+            failed = True
+            continue
+        if current & MGMT_LL_PRIVACY:
+            log(f"{name}：内核报告 LL Privacy 已启用。")
+        else:
+            status = "当前未启用" if supported & MGMT_LL_PRIVACY else "当前内核未报告支持"
+            log(f"{name}：LL Privacy {status}。")
+            failed = True
+    return int(failed)
 
 
 def main():
     if os.geteuid() != 0:
         log("请以 root 身份运行。")
         return 1
-    # 安装器单独调用验证入口；普通睡眠前执行不重复切换或验证实验功能。
+    # 安装器单独调用验证入口；普通睡眠前执行不查询控制器的 LL Privacy 状态。
     if sys.argv[1:] == ["--verify-ll-privacy"]:
         return verify_ll_privacy()
     if sys.argv[1:]:

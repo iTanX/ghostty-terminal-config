@@ -12,30 +12,25 @@ bluetooth-wakeup-systemd/
 └── README.md
 ```
 
-- `install.sh`：备份并合并 BlueZ 的 LL Privacy 配置，安装服务，重新初始化蓝牙并检查一次。
+- `install.sh`：安装服务，检查一次唤醒权限，并读取内核报告的 LL Privacy 状态。
 - `fix-bluetooth-wakeup.py`：启用所有 USB 蓝牙适配器自身的 power/wakeup，为所有已配对／绑定且提供 WakeAllowed 属性的设备开启权限。
 - `fix-bluetooth-wakeup.service`：在 sleep.target 之前执行脚本，实际睡眠服务在 sleep.target 之后执行。
 
 ## 安装
 
-适用当前 Debian 13、BlueZ 5.82、systemd 环境，需要 Python 3 和 busctl。使用电脑上的终端进入本文件夹后执行：
+适用于使用稳定 LL Privacy 管理接口的 Arch Linux。需要 systemd、BlueZ、Python 3 和 busctl。进入本文件夹后执行：
 
 ```bash
 bash install.sh
 ```
 
-**安装会申请 sudo 权限并短暂断开蓝牙键鼠和音响。** 无需重启电脑，但设备可能需要重新连接。
+安装器通过 sudo 安装并启用睡眠前服务，立即执行一次唤醒权限检查，再通过 Linux Bluetooth MGMT 查询每个控制器的 LL Privacy 状态。唤醒权限检查失败会使安装器返回非零状态。LL Privacy 状态单独输出，服务保持启用。
 
-安装操作：
+## LL Privacy
 
-1. 在 `/etc/bluetooth/main.conf` 已有 `[General]` 段中合并 `KernelExperimental = 15c0a148-c273-11ea-b3de-0242ac130004`。保留其他 UUID；已有 true 则保留。修改前在 `/etc/bluetooth/` 下生成 `main.conf.bak-时间戳`（例如 `/etc/bluetooth/main.conf.bak-20261028-210000-123456`），仅配置发生改变时备份；重复安装不会重复加入 UUID。
-2. 安装 `/usr/local/lib/bluetooth-wakeup-systemd/fix-bluetooth-wakeup.py` 和 `/etc/systemd/system/fix-bluetooth-wakeup.service`，由 root 管理。
-3. 将服务启用到 sleep.target。
-4. 暂时关闭已打开的控制器，重启 BlueZ，恢复这些控制器，以应用 LL Privacy。控制器对象异步注册，恢复时每个控制器最多等待约 20 秒并重试，失败报告最后一次错误。其配置在以后 BlueZ 初始化时继续应用；无需在每次睡眠前开关控制器。实际开启仍取决于硬件支持和 BlueZ 初始化结果。
-5. 读取每个控制器的 `ExperimentalFeatures`，确认 BlueZ 已成功启用 LL Privacy。验证失败会报告错误并使安装器以非零状态退出，已安装文件保留。
-6. 立即检查一次权限；以后每次正常 systemd 睡眠流程之前再检查。
+新内核通过 MGMT 报告控制器是否支持和启用 LL Privacy。BlueZ 默认采用 `[LE]` 段的 `CentralAddressResolution = 1`，在条件满足时为需要地址解析的设备设置对应标志。若本机配置显式设置为 `0`，可改回 `1` 后重启 BlueZ。控制器的 LL Privacy 状态与每个设备的地址解析标志是独立的检查项。
 
-安装时关闭的控制器仍可能受 BlueZ 自身 AutoEnable 策略影响；本脚本只对原先已打开的控制器显式恢复开关。
+Arch 安装器保留现有 BlueZ 配置并使用当前运行的蓝牙服务。若此前运行过 Debian 版，可对照配置备份清理旧版加入的实验 UUID。
 
 ## 每次睡眠前的行为
 
@@ -62,16 +57,14 @@ bash install.sh
 
 | 常量 | 默认值 | 用途 |
 |---|---|---|
-| `LL_PRIVACY_UUID` | `15c0a148-c273-11ea-b3de-0242ac130004` | Linux／BlueZ 定义的功能标识，与具体设备无关；安装器复用此常量 |
 | `DBUS_TIMEOUT_SECONDS` | 2 秒 | 单次 D-Bus 请求超时 |
 | `COMMAND_TIMEOUT_SECONDS` | 3 秒 | busctl 进程超时 |
 | `MAX_ATTEMPTS` | 3 | 设备权限检查最多轮数 |
 | `RETRY_INTERVAL_SECONDS` | 1 秒 | 两轮检查之间的等待时间 |
 | `DEVICE_CHECK_BUDGET_SECONDS` | 20 秒 | 设备权限检查时间预算 |
 | `DEVICE_CALL_COUNT` | 2 | 每设备设置和读取各一次，用于计算预留时间 |
-| `PRIVACY_CHECK_ATTEMPTS` | 5 | 安装后 LL Privacy 状态验证最多轮数 |
 
-设备操作和重试预留时间由上述参数计算。服务中的 `TimeoutStartSec=30s` 为整体硬超时，调整预算时要同时保留足够余量。安装器的 `ADAPTER_TIMEOUT_SECONDS=5` 控制单次控制器调用超时，`ADAPTER_READY_BUDGET_SECONDS=20` 和 `ADAPTER_RETRY_INTERVAL_SECONDS=1` 控制恢复控制器的重试窗口与间隔。单次调用可能使实际等待略超窗口。
+设备操作和重试预留时间由上述参数计算。服务中的 `TimeoutStartSec=30s` 为整体硬超时，调整预算时要同时保留足够余量。
 
 系统接口名称和标准路径是固定约定；设备地址、USB 厂商／产品 ID、控制器编号均动态获取。
 
@@ -107,7 +100,7 @@ sudo python3 -I /usr/local/lib/bluetooth-wakeup-systemd/fix-bluetooth-wakeup.py 
 sudo journalctl -b -u bluetooth --no-pager -g 'RPA|Privacy|privacy|flags|wake'
 ```
 
-若睡眠前检查仍报 Invalid Parameters，用 btmgmt 分别读取实际地址及类型对应的支持标志。LE Public 为类型 1，LE Random 为类型 2。支持标志需包含 bit 0（0x1）。不要仅因配置文件存在 UUID 就认定 LL Privacy 成功启用。
+若睡眠前检查仍报 Invalid Parameters，用 btmgmt 分别读取实际地址及类型对应的支持标志。LE Public 为类型 1，LE Random 为类型 2。支持标志需包含 bit 0（0x1）。
 
 ## 停用本方案
 
@@ -115,7 +108,7 @@ sudo journalctl -b -u bluetooth --no-pager -g 'RPA|Privacy|privacy|flags|wake'
 sudo systemctl disable fix-bluetooth-wakeup.service
 ```
 
-停用后不再在睡眠前执行权限修复；已应用的设备权限和 LL Privacy 配置仍然保留。若需撤销 LL Privacy，先对比配置备份，移除对应 UUID 并保留其他配置；重新初始化蓝牙后才会改变运行状态。
+停用后，已应用的设备唤醒权限仍然保留。
 
 ## 来源
 
@@ -123,4 +116,4 @@ sudo systemctl disable fix-bluetooth-wakeup.service
 
 https://github.com/EnriqueWood/wake-on-bluetooth/tree/19bdc7e0b98fc265350dba7cb11bdccedc14ccff/systemd
 
-本实现包含 USB 适配器唤醒授权、设备 WakeAllowed 设置和 LL Privacy 配置，通过 Before=sleep.target 保证权限修复在实际睡眠流程之前执行。
+本实现包含 USB 适配器唤醒授权、设备 WakeAllowed 设置和 LL Privacy 状态查询，通过 Before=sleep.target 保证权限修复在实际睡眠流程之前执行。
