@@ -64,7 +64,7 @@ progress "GNOME 扩展 / 刷新软件索引"
 sudo apt-get update
 
 # 2. 安装依赖
-sudo apt-get install -y ca-certificates python3 libglib2.0-bin ddcutil
+sudo apt-get install -y ca-certificates git python3 libglib2.0-bin ddcutil
 
 # 3. 安装扩展管理器
 progress "GNOME 扩展 / 安装扩展管理器"
@@ -80,7 +80,7 @@ for uuid in "${EXTENSIONS[@]}"; do
     python3 -I - "$uuid" "$GNOME_MAJOR" "$EXTENSION_DIR" "$TMP_DIR" <<'PY'
 import json
 from pathlib import Path
-from shutil import copyfileobj
+from shutil import copyfileobj, rmtree
 import subprocess
 import sys
 from urllib.parse import urlencode
@@ -91,6 +91,30 @@ uuid, major, destination, temporary = sys.argv[1:]
 
 def compatible(metadata):
     return metadata.get('uuid') == uuid and major in metadata.get('shell-version', [])
+
+# 从源码构建并安装亮度和音量扩展。
+if uuid == 'monitor-brightness-volume@ailin.nemui':
+    source = Path(temporary) / 'monitor-brightness-volume'
+    subprocess.run([
+        'git', 'clone', '--depth', '1', '--branch', 'main',
+        'https://github.com/FC-GNOME-EXTENSIONS/gnome-shell-extension-monitor-brightness-volume',
+        str(source),
+    ], check=True)
+    metadata = json.loads((source / 'metadata.json').read_text())
+    if not compatible(metadata):
+        sys.exit(f'错误：源码中的扩展 UUID 或 GNOME {major} 兼容信息不匹配：{uuid}')
+    output = source / 'dist'
+    output.mkdir()
+    subprocess.run([
+        'gnome-extensions', 'pack', '--force', '--extra-source=js',
+        '--extra-source=LICENSE', '--extra-source=README.md',
+        '--out-dir=' + str(output), str(source),
+    ], check=True)
+    archive = output / (uuid + '.shell-extension.zip')
+    subprocess.run(['gnome-extensions', 'install', '--force', str(archive)], check=True)
+    rmtree(source)
+    print('亮度和音量扩展已安装，临时源码和安装包已清理。')
+    sys.exit(0)
 
 for base in (Path(destination), Path('/usr/share/gnome-shell/extensions')):
     metadata_file = base / uuid / 'metadata.json'

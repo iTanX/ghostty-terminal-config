@@ -99,7 +99,7 @@ if uuid == 'monitor-brightness-volume@ailin.nemui':
     source = Path(temporary) / 'monitor-brightness-volume'
     subprocess.run([
         'git', 'clone', '--depth', '1', '--branch', 'main',
-        'https://github.com/iTanX/gnome-shell-extension-monitor-brightness-volume.git',
+        'https://github.com/FC-GNOME-EXTENSIONS/gnome-shell-extension-monitor-brightness-volume',
         str(source),
     ], check=True)
     metadata = json.loads((source / 'metadata.json').read_text())
