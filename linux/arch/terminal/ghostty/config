@@ -28,6 +28,8 @@ theme = "Catppuccin Mocha"
 # 注: window-save-state（退出保留窗口状态）为 macOS 专属，Linux 上无任何效果，故未启用
 window-padding-x = 12
 window-padding-y = 8
+window-width = 92
+window-height = 35
 background-opacity = 0.92
 background-blur = 20
 
