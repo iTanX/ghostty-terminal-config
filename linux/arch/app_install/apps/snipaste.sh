@@ -28,8 +28,8 @@ install_snipaste() {
             --output "$archive" "https://download.snipaste.com/archives/${archive##*/}"
     fi
 
-    # 4.2 导入 AppImage，并确认 Gear Lever 已移走下载文件。
-    "$@" --integrate "$archive" --yes
+    # 4.2 以替换模式导入，保留应用原始名称，并确认下载文件已移走。
+    "$@" --integrate "$archive" --replace --yes
     if [[ -e "$archive" || -L "$archive" ]]; then
         printf 'Gear Lever 未移走下载目录中的 Snipaste AppImage：%s\n' "$archive" >&2
         return 1
