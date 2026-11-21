@@ -160,7 +160,7 @@ main() {
     local appimages_dir="${HOME}/.local/opt/AppImages" shortcut_command scope
     local -a gear_lever gear_settings
 
-    # 1. 检查运行身份、系统架构及 Python。
+    # 1. 检查运行环境并安装依赖。
     if [[ "${EUID}" -eq 0 ]]; then
         printf '请以普通用户运行，不要使用 sudo。\n' >&2
         return 1
@@ -172,6 +172,11 @@ main() {
     if [[ ! -x /usr/bin/python3 ]]; then
         printf '缺少 /usr/bin/python3，请安装 Python 后重新运行。\n' >&2
         return 1
+    fi
+
+    # 1.1 缺少 FUSE 2 时安装 AppImage 运行依赖。
+    if ! pacman -Q fuse2 >/dev/null 2>&1; then
+        sudo pacman -S --needed --noconfirm fuse2
     fi
 
     # 2. 复用已安装的 Gear Lever，或从已配置的 Flathub 安装。
